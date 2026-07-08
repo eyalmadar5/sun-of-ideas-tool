@@ -1,0 +1,3259 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>שמש הרעיונות</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Suez+One&family=Rubik:wght@400;500;600;700&family=Heebo:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F6F1E4;
+    --paper-2:#EFE8D6;
+    --ink:#24261F;
+    --ink-soft:#5B5A50;
+    --line:#D8CFB6;
+    --card:#FFFDF7;
+    --shadow: 0 2px 10px rgba(36,38,31,0.08);
+    --sun-core:#FFF3D0;
+    --sun-mid:#FFD873;
+    --sun-glow:#F2994A;
+    --sun-deep:#C9622A;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;background:var(--paper);overflow:hidden;font-family:'Rubik',sans-serif;color:var(--ink);}
+
+  body{
+    background-image:
+      radial-gradient(circle at 1px 1px, rgba(36,38,31,0.05) 1px, transparent 1.6px);
+    background-size: 22px 22px;
+  }
+
+  #app{position:fixed;inset:0;display:flex;flex-direction:column;}
+
+  /* ---------- TOP BAR ---------- */
+  #topbar{
+    flex:0 0 auto;
+    display:flex;align-items:center;gap:14px;
+    padding:14px 22px;
+    background:linear-gradient(180deg, rgba(246,241,228,0.97), rgba(246,241,228,0.85));
+    border-bottom:1px solid var(--line);
+    z-index:20;
+    backdrop-filter: blur(6px);
+  }
+  #brand{display:flex;flex-direction:column;flex:0 0 auto;margin-left:8px;}
+  #brand .eyebrow{font-family:'Heebo',sans-serif;font-size:11px;letter-spacing:.12em;color:var(--ink-soft);}
+  #brand h1{font-family:'Suez One',serif;font-size:22px;margin:0;line-height:1.1;color:var(--ink);}
+  .sun-mark{
+    display:inline-block;color:var(--sun-glow);
+    filter:drop-shadow(0 0 4px rgba(242,153,74,0.55));
+  }
+
+  .btn{
+    font-family:'Rubik',sans-serif;font-weight:600;font-size:14px;
+    border:none;border-radius:12px;padding:11px 18px;cursor:pointer;
+    background:#1E6E4C;color:#fff;transition:transform .12s ease, box-shadow .12s ease, background .15s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(30,110,76,0.3);}
+  .btn:active{transform:translateY(0);}
+  .btn.ghost{
+    background:transparent;color:var(--ink-soft);border:1.5px solid var(--line);
+  }
+  .btn.ghost:hover{box-shadow:none;background:rgba(36,38,31,0.05);}
+  .btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none;}
+
+  #status-line{flex:1 1 auto;display:none;align-items:center;justify-content:flex-end;gap:10px;}
+  #status-line .root-chip{
+    font-family:'Suez One',serif;font-size:16px;background:var(--card);
+    border:1.5px solid var(--ink);border-radius:14px;padding:8px 16px;
+    max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+
+  /* ---------- TABS BAR ---------- */
+  #tabs-bar{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;
+    padding:9px 22px;overflow-x:auto;
+    background:var(--paper-2);border-bottom:1px solid var(--line);
+    z-index:19;
+  }
+  #tabs-bar::-webkit-scrollbar{height:5px;}
+  .tab-pill{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;
+    font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:500;color:var(--ink-soft);
+    background:var(--card);border:1.4px solid var(--line);border-radius:20px;
+    padding:6px 8px 6px 12px;cursor:pointer;
+  }
+  .tab-pill.active{border-color:var(--ink);color:var(--ink);box-shadow:var(--shadow);}
+  .tab-label{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .tab-close{
+    width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:10px;color:var(--ink-soft);background:var(--paper-2);flex:0 0 auto;
+  }
+  .tab-close:hover{background:#A2472F;color:#fff;}
+  .tab-add{
+    flex:0 0 auto;font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:600;
+    background:transparent;border:1.4px dashed var(--ink-soft);color:var(--ink-soft);
+    border-radius:20px;padding:7px 14px;cursor:pointer;
+  }
+  .tab-add:hover{background:rgba(36,38,31,0.06);color:var(--ink);}
+
+  /* ---------- MAIN AREA ---------- */
+  #main-area{position:relative;flex:1 1 auto;overflow:hidden;}
+
+  #empty-state{
+    position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:16px;text-align:center;padding:20px;z-index:10;
+  }
+  #empty-state h2{font-family:'Suez One',serif;font-size:30px;margin:0;color:var(--ink);}
+  #empty-state p{font-family:'Heebo',sans-serif;font-size:14.5px;color:var(--ink-soft);max-width:420px;margin:0;}
+  #topic-form{display:flex;align-items:center;gap:10px;width:100%;max-width:560px;margin-top:6px;}
+  #topic-input{
+    flex:1 1 auto;
+    font-family:'Rubik',sans-serif;font-size:15px;
+    padding:12px 16px;border-radius:14px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;
+  }
+  #topic-input:focus{border-color:#1E6E4C;}
+
+  /* ---------- VIEWPORT (map) ---------- */
+  #viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;display:none;}
+  #viewport.grabbing{cursor:grabbing;}
+  #world{
+    position:absolute;top:0;left:0;
+    width:6000px;height:6000px;
+    transform-origin:0 0;
+    will-change: transform;
+  }
+  #edges{position:absolute;top:0;left:0;width:6000px;height:6000px;pointer-events:none;overflow:visible;}
+  #nodes-layer{position:absolute;top:0;left:0;width:6000px;height:6000px;}
+  #sun-glow{
+    position:absolute;pointer-events:none;
+    width:2000px;height:2000px;
+    background:radial-gradient(circle, rgba(255,216,115,0.30) 0%, rgba(242,153,74,0.14) 34%, rgba(242,153,74,0) 68%);
+  }
+
+  .node{
+    position:absolute;
+    transform:translate(-50%,-50%);
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    padding:15px 22px;
+    min-width:104px;max-width:190px;min-height:104px;
+    border-radius:999px;
+    box-shadow:var(--shadow);
+    font-size:13.5px;line-height:1.32;font-weight:600;
+    color:var(--ink);
+    user-select:none;
+    cursor:grab;touch-action:none;
+    transition:left .55s cubic-bezier(.2,.7,.3,1), top .55s cubic-bezier(.2,.7,.3,1), opacity .3s ease;
+    z-index:2;
+  }
+  .node.dragging{
+    cursor:grabbing;transition:none;
+    box-shadow:0 8px 22px rgba(36,38,31,0.28);
+    z-index:6;
+  }
+  .node-actions{transition:left .55s cubic-bezier(.2,.7,.3,1), top .55s cubic-bezier(.2,.7,.3,1);}
+  .node.dragging + .node-actions, .node-actions.no-anim{transition:none;}
+  .node.lvl-1{min-width:118px;min-height:118px;font-size:14.5px;}
+  .node.root{
+    font-family:'Suez One',serif;font-weight:400;font-size:19px;color:#4A2C0F;
+    border:2.5px solid var(--sun-deep);
+    min-width:176px;max-width:230px;min-height:176px;
+    padding:24px 30px;
+    background:radial-gradient(circle at 34% 28%, var(--sun-core) 0%, var(--sun-mid) 38%, var(--sun-glow) 74%, var(--sun-deep) 100%);
+    box-shadow:0 0 0 5px rgba(255,246,226,0.85), 0 0 40px 8px rgba(242,153,74,0.38), 0 6px 16px rgba(36,38,31,0.16);
+    z-index:4;
+  }
+  .node .search-badge{
+    position:absolute;top:-9px;left:-9px;
+    background:var(--ink);color:var(--paper);
+    font-family:'Heebo',sans-serif;font-size:10px;
+    border-radius:20px;padding:2px 7px;
+    box-shadow:var(--shadow);
+  }
+  .node .del-btn{
+    position:absolute;top:-8px;right:-8px;
+    width:20px;height:20px;border-radius:50%;
+    background:var(--paper-2);border:1.4px solid var(--line);color:var(--ink-soft);
+    font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;opacity:0;transition:opacity .15s ease;
+  }
+  .node:hover .del-btn{opacity:1;}
+
+  .more-btn{
+    font-family:'Heebo',sans-serif;font-size:11.5px;font-weight:500;
+    background:var(--card);border:1.4px solid var(--ink-soft);color:var(--ink);
+    border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;
+    box-shadow:var(--shadow);
+  }
+  .more-btn:hover{background:#1E6E4C;color:#fff;border-color:#1E6E4C;}
+  .more-btn.loading{pointer-events:none;opacity:.7;}
+  .more-btn.error{border-color:#A2472F;color:#A2472F;}
+  .more-btn.error:hover{background:#A2472F;color:#fff;border-color:#A2472F;}
+  .more-btn .dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;animation:pulse 1s infinite ease-in-out;}
+  @keyframes pulse{0%,100%{opacity:.25;}50%{opacity:1;}}
+
+  .node-actions{
+    position:absolute;transform:translate(-50%,0);
+    display:flex;flex-wrap:wrap;gap:6px;justify-content:center;
+    max-width:250px;
+    transition:left .55s cubic-bezier(.2,.7,.3,1), top .55s cubic-bezier(.2,.7,.3,1);
+    z-index:3;
+  }
+  .script-btn{
+    font-family:'Heebo',sans-serif;font-size:11.5px;font-weight:500;
+    background:var(--card);border:1.4px solid #3C4F9E;color:#3C4F9E;
+    border-radius:20px;padding:5px 12px;cursor:pointer;white-space:nowrap;
+    box-shadow:var(--shadow);
+  }
+  .script-btn:hover{background:#3C4F9E;color:#fff;}
+  .script-btn.ready{background:#3C4F9E;color:#fff;}
+  .script-btn.ready:hover{background:#2c3b7a;}
+  .bio-btn{border-color:#6B3F6B;color:#6B3F6B;}
+  .bio-btn:hover{background:#6B3F6B;color:#fff;}
+  .bio-btn.ready{background:#6B3F6B;color:#fff;}
+  .bio-btn.ready:hover{background:#4f2e4f;}
+  .product-btn{border-color:var(--sun-deep);color:var(--sun-deep);}
+  .product-btn:hover{background:var(--sun-deep);color:#fff;}
+  .product-btn.ready{background:var(--sun-deep);color:#fff;}
+  .product-btn.ready:hover{background:#a04f22;}
+
+  .edge-path{fill:none;stroke-width:2;stroke-linecap:round;stroke-dasharray:0.5 8;opacity:.65;}
+
+  #controls{
+    position:absolute;bottom:20px;left:20px;z-index:15;
+    display:none;flex-direction:column;gap:8px;
+  }
+  .ctrl-btn{
+    width:38px;height:38px;border-radius:50%;
+    background:var(--card);border:1.5px solid var(--line);
+    font-size:17px;color:var(--ink);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:var(--shadow);
+  }
+  .ctrl-btn:hover{background:var(--paper-2);}
+
+  /* ---------- LIST VIEW ---------- */
+  #list-view{position:absolute;inset:0;overflow-y:auto;display:none;padding:26px 30px 60px;}
+  #list-container{max-width:760px;margin:0 auto;}
+  ul.list-tree, ul.list-children{list-style:none;margin:0;padding:0;}
+  ul.list-children{padding-right:26px;border-right:2px solid var(--line);margin-right:11px;margin-top:6px;}
+  li.list-item{margin-bottom:6px;}
+  .list-row{
+    display:flex;align-items:center;gap:9px;
+    background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+    padding:9px 12px;
+  }
+  li.is-root > .list-row{
+    border:2px solid var(--ink);font-family:'Suez One',serif;font-size:16.5px;
+  }
+  li.list-item:not(.is-root) > .list-row{border-right:4px solid var(--branch-color, var(--line));}
+  .list-caret{
+    width:20px;height:20px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--ink-soft);cursor:pointer;border-radius:5px;
+  }
+  .list-caret:hover{background:rgba(36,38,31,0.07);}
+  .list-caret.empty{visibility:hidden;}
+  .list-label{flex:1 1 auto;font-family:'Rubik',sans-serif;font-size:14px;color:var(--ink);}
+  .list-search-badge{font-size:12px;flex:0 0 auto;}
+  .list-more-btn{
+    flex:0 0 auto;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;
+    background:transparent;border:1.3px solid var(--ink-soft);color:var(--ink-soft);
+    border-radius:16px;padding:5px 11px;cursor:pointer;white-space:nowrap;
+  }
+  .list-more-btn:hover{background:#1E6E4C;color:#fff;border-color:#1E6E4C;}
+  .list-more-btn.loading{pointer-events:none;opacity:.65;}
+  .list-more-btn.error{border-color:#A2472F;color:#A2472F;}
+  .list-script-btn{
+    flex:0 0 auto;font-family:'Heebo',sans-serif;font-size:12px;font-weight:500;
+    background:transparent;border:1.3px solid #3C4F9E;color:#3C4F9E;
+    border-radius:16px;padding:5px 11px;cursor:pointer;white-space:nowrap;
+  }
+  .list-script-btn:hover{background:#3C4F9E;color:#fff;}
+  .list-script-btn.ready{background:#3C4F9E;color:#fff;}
+  .list-bio-btn{border-color:#6B3F6B;color:#6B3F6B;}
+  .list-bio-btn:hover{background:#6B3F6B;color:#fff;}
+  .list-bio-btn.ready{background:#6B3F6B;color:#fff;}
+  .list-product-btn{border-color:var(--sun-deep);color:var(--sun-deep);}
+  .list-product-btn:hover{background:var(--sun-deep);color:#fff;}
+  .list-product-btn.ready{background:var(--sun-deep);color:#fff;}
+  .list-del-btn{
+    flex:0 0 auto;width:20px;height:20px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:11px;
+    color:var(--ink-soft);cursor:pointer;
+  }
+  .list-del-btn:hover{background:#A2472F;color:#fff;}
+
+  #error-toast{
+    position:absolute;bottom:20px;right:20px;left:auto;
+    background:#3a1f1a;color:#f6ece7;font-family:'Heebo',sans-serif;font-size:13px;
+    padding:10px 16px;border-radius:10px;box-shadow:var(--shadow);
+    display:none;z-index:30;max-width:320px;
+  }
+
+  /* ---------- SIDE PANELS (reel script + bio) ---------- */
+  #script-backdrop, #bio-backdrop{
+    position:fixed;inset:0;background:rgba(36,38,31,0.35);
+    display:none;z-index:40;
+  }
+  #script-panel, #bio-panel{
+    position:fixed;top:0;bottom:0;right:0;
+    width:min(440px, 92vw);
+    background:var(--paper);border-left:1.5px solid var(--line);
+    box-shadow:-8px 0 24px rgba(36,38,31,0.18);
+    display:none;flex-direction:column;overflow:hidden;z-index:41;
+    transform:translateX(100%);transition:transform .3s ease;
+  }
+  #script-panel.open, #bio-panel.open{transform:translateX(0);}
+  .script-panel-header{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:18px 20px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(246,241,228,0.97), rgba(246,241,228,0.85));
+  }
+  .script-panel-header h3{
+    font-family:'Suez One',serif;font-size:17px;margin:0;color:var(--ink);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .script-panel-header .eyebrow{
+    font-family:'Heebo',sans-serif;font-size:11px;letter-spacing:.1em;color:var(--ink-soft);display:block;margin-bottom:2px;
+  }
+  #script-close, #bio-close{
+    flex:0 0 auto;width:30px;height:30px;border-radius:50%;
+    background:var(--card);border:1.4px solid var(--line);color:var(--ink-soft);
+    font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  }
+  #script-close:hover, #bio-close:hover{background:var(--paper-2);}
+  #script-body, #bio-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:18px 20px 10px;}
+  .script-loading, .script-error{
+    font-family:'Heebo',sans-serif;font-size:14px;color:var(--ink-soft);text-align:center;
+    padding:40px 10px;
+  }
+  .script-error{color:#A2472F;}
+  .script-section{margin-bottom:16px;}
+  .script-section-label{
+    font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;color:var(--ink-soft);
+    letter-spacing:.02em;margin-bottom:5px;
+  }
+  .script-section-content{
+    font-family:'Rubik',sans-serif;font-size:14.5px;line-height:1.6;color:var(--ink);
+    white-space:pre-wrap;
+  }
+  .script-hook .script-section-content{
+    background:#FFF4E0;border-right:3px solid #97741A;padding:9px 12px;border-radius:8px;
+  }
+  .script-cta .script-section-content{
+    background:#E4F1EA;border-right:3px solid #1E6E4C;padding:9px 12px;border-radius:8px;font-weight:600;
+  }
+  .script-shots ul{margin:0;padding-right:20px;font-family:'Rubik',sans-serif;font-size:13.5px;color:var(--ink);line-height:1.6;}
+  .script-caption .script-section-content{font-style:italic;color:var(--ink-soft);}
+  .script-tags{display:flex;flex-wrap:wrap;gap:6px;}
+  .script-tag{
+    font-family:'Heebo',sans-serif;font-size:12px;background:var(--paper-2);
+    border-radius:12px;padding:4px 10px;color:var(--ink-soft);
+  }
+  .script-reference-card{
+    display:flex;flex-direction:column;gap:3px;text-decoration:none;
+    background:linear-gradient(135deg, #FFF3D0, #FFE0B0);
+    border:1.5px solid var(--sun-deep);border-radius:10px;
+    padding:10px 13px;
+  }
+  .script-reference-platform{
+    font-family:'Heebo',sans-serif;font-size:13px;font-weight:700;color:#4A2C0F;
+  }
+  .script-reference-note{
+    font-family:'Heebo',sans-serif;font-size:12px;color:#6b4a26;
+  }
+  .script-search-note{
+    font-family:'Heebo',sans-serif;font-size:11.5px;color:var(--ink-soft);
+    text-align:center;margin-top:6px;
+  }
+  .script-panel-footer{
+    flex:0 0 auto;display:flex;gap:10px;padding:14px 20px;border-top:1px solid var(--line);
+  }
+  .script-panel-footer .btn{flex:1 1 auto;font-size:13px;padding:10px 14px;}
+  .script-regen-wrap{flex:1 1 auto;position:relative;}
+  .script-regen-wrap .btn{width:100%;}
+  .style-menu{
+    position:absolute;bottom:calc(100% + 8px);right:0;left:0;
+    background:var(--card);border:1.5px solid var(--line);border-radius:12px;
+    box-shadow:0 -4px 18px rgba(36,38,31,0.18);
+    padding:6px;z-index:50;
+    display:flex;flex-direction:column;gap:2px;
+    max-height:260px;overflow-y:auto;
+  }
+  .style-menu-item{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;
+    background:transparent;border:none;border-radius:8px;
+    padding:8px 10px;cursor:pointer;text-align:right;width:100%;
+  }
+  .style-menu-item:hover{background:var(--paper-2);}
+  .style-menu-title{font-family:'Rubik',sans-serif;font-size:13.5px;font-weight:600;color:var(--ink);}
+  .style-menu-desc{font-family:'Heebo',sans-serif;font-size:11.5px;color:var(--ink-soft);}
+  .script-style-badge{
+    display:inline-block;font-family:'Heebo',sans-serif;font-size:11px;color:var(--ink-soft);
+    background:var(--paper-2);border-radius:12px;padding:3px 10px;margin-bottom:10px;
+  }
+
+  /* ---------- BIO FORM & RESULT ---------- */
+  .bio-intro{
+    font-family:'Heebo',sans-serif;font-size:13px;color:var(--ink-soft);line-height:1.55;
+    margin-bottom:16px;
+  }
+  .bio-field{margin-bottom:14px;}
+  .bio-field label{
+    display:block;font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:600;color:var(--ink);
+    margin-bottom:5px;
+  }
+  .bio-field .bio-hint{
+    display:block;font-family:'Heebo',sans-serif;font-size:11px;color:var(--ink-soft);
+    margin-bottom:5px;font-weight:400;
+  }
+  .bio-field input, .bio-field textarea{
+    width:100%;font-family:'Rubik',sans-serif;font-size:13.5px;
+    padding:9px 12px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;resize:vertical;
+  }
+  .bio-field input:focus, .bio-field textarea:focus{border-color:#1E6E4C;}
+  .bio-result-tagline{
+    font-family:'Suez One',serif;font-size:16px;color:var(--ink);
+    background:var(--card);border:2px solid var(--ink);border-radius:10px;
+    padding:11px 14px;margin-bottom:14px;text-align:center;
+  }
+  .bio-result-bullet{
+    font-family:'Rubik',sans-serif;font-size:14.5px;line-height:1.55;color:var(--ink);
+    background:var(--card);border:1.5px solid var(--line);border-right:3px solid #3C4F9E;
+    border-radius:8px;padding:9px 12px;margin-bottom:9px;
+  }
+  .bio-edit-link{
+    display:inline-block;font-family:'Heebo',sans-serif;font-size:12px;color:var(--ink-soft);
+    text-decoration:underline;cursor:pointer;margin-top:6px;
+  }
+
+  /* ---------- PRODUCT OFFER MODAL ---------- */
+  #product-backdrop{
+    position:fixed;inset:0;background:rgba(36,38,31,0.5);
+    display:none;z-index:60;
+  }
+  #product-modal{
+    position:fixed;top:50%;left:50%;
+    width:min(560px, 92vw);max-height:86vh;
+    background:var(--paper);border-radius:20px;border:2px solid var(--sun-deep);
+    box-shadow:0 20px 60px rgba(36,38,31,0.35);
+    display:none;flex-direction:column;overflow:hidden;z-index:61;
+    transform:translate(-50%,-50%) scale(.94);opacity:0;
+    transition:transform .25s ease, opacity .25s ease;
+  }
+  #product-modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  .product-modal-header{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:20px 22px;border-bottom:1px solid var(--line);
+    background:radial-gradient(circle at 15% 30%, rgba(255,216,115,0.35), transparent 60%);
+    border-radius:20px 20px 0 0;
+  }
+  .product-modal-header h3{font-family:'Suez One',serif;font-size:19px;margin:0;color:var(--ink);}
+  #product-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:20px 22px 24px;}
+  .product-name{
+    font-family:'Suez One',serif;font-size:22px;color:#4A2C0F;text-align:center;
+    background:radial-gradient(circle at 30% 30%, var(--sun-core), var(--sun-mid));
+    border:2px solid var(--sun-deep);border-radius:14px;padding:14px 18px;margin-bottom:14px;
+  }
+  .product-desc{font-family:'Rubik',sans-serif;font-size:14px;line-height:1.6;color:var(--ink);margin-bottom:14px;text-align:center;}
+  .product-price{
+    font-family:'Suez One',serif;font-size:18px;color:var(--ink);text-align:center;
+    margin-bottom:14px;
+  }
+  .product-section-label{
+    font-family:'Heebo',sans-serif;font-size:12px;font-weight:700;color:var(--ink-soft);
+    letter-spacing:.02em;margin-bottom:6px;margin-top:16px;
+  }
+  .product-components ul{margin:0;padding-right:20px;font-family:'Rubik',sans-serif;font-size:13.5px;color:var(--ink);line-height:1.7;}
+  .value-stack-item{
+    display:flex;justify-content:space-between;gap:10px;
+    font-family:'Rubik',sans-serif;font-size:13.5px;color:var(--ink);
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    padding:8px 12px;margin-bottom:6px;
+  }
+  .value-stack-item .vs-value{color:var(--ink-soft);font-family:'Heebo',sans-serif;font-size:12.5px;white-space:nowrap;}
+  .value-stack-total{
+    display:flex;justify-content:space-between;font-weight:700;
+    font-family:'Rubik',sans-serif;font-size:14.5px;color:var(--ink);
+    border-top:1.5px dashed var(--line);padding-top:8px;margin-top:4px;
+  }
+  .product-guarantee, .product-scarcity{
+    font-family:'Rubik',sans-serif;font-size:13.5px;line-height:1.55;color:var(--ink);
+    background:#EAF6EF;border-right:3px solid #1E6E4C;border-radius:8px;padding:9px 12px;margin-bottom:8px;
+  }
+  .product-final-price{
+    text-align:center;margin-top:16px;padding:16px;border-radius:12px;
+    background:radial-gradient(circle at 30% 30%, var(--sun-core), var(--sun-mid));
+    border:2px solid var(--sun-deep);
+  }
+  .product-final-price .pf-old{font-family:'Heebo',sans-serif;font-size:13px;color:#6b4a26;text-decoration:line-through;}
+  .product-final-price .pf-new{font-family:'Suez One',serif;font-size:24px;color:#4A2C0F;display:block;margin-top:2px;}
+  .product-type-row{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .product-type-pill{
+    display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:right;
+    background:var(--card);border:1.6px solid var(--line);border-radius:12px;
+    padding:10px 14px;cursor:pointer;width:100%;
+  }
+  .product-type-pill:hover{border-color:var(--sun-deep);}
+  .product-type-pill.selected{border-color:var(--sun-deep);background:radial-gradient(circle at 15% 20%, rgba(255,216,115,0.28), transparent 70%);}
+  .pt-title{font-family:'Rubik',sans-serif;font-size:14px;font-weight:700;color:var(--ink);}
+  .pt-desc{font-family:'Heebo',sans-serif;font-size:12px;color:var(--ink-soft);}
+  .product-build-btn{
+    display:block;width:100%;margin-top:16px;
+    font-family:'Rubik',sans-serif;font-weight:700;font-size:15px;
+    background:var(--sun-deep);color:#fff;border:none;border-radius:14px;
+    padding:14px;cursor:pointer;
+  }
+  .product-build-btn:hover{background:#a04f22;}
+  .product-regen-link{
+    display:block;text-align:center;font-family:'Heebo',sans-serif;font-size:12px;color:var(--ink-soft);
+    text-decoration:underline;cursor:pointer;margin-top:12px;
+  }
+  .calc-box{
+    margin-top:22px;border-top:1.5px solid var(--line);padding-top:16px;
+  }
+  .calc-title{font-family:'Suez One',serif;font-size:15px;color:var(--ink);margin-bottom:10px;text-align:center;}
+  .calc-row{display:flex;gap:10px;margin-bottom:10px;}
+  .calc-field{flex:1 1 0;}
+  .calc-field label{
+    display:block;font-family:'Heebo',sans-serif;font-size:11.5px;color:var(--ink-soft);margin-bottom:4px;
+  }
+  .calc-field input{
+    width:100%;font-family:'Rubik',sans-serif;font-size:14px;
+    padding:8px 10px;border-radius:9px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;
+  }
+  .calc-field input:focus{border-color:var(--sun-deep);}
+  .calc-result{
+    font-family:'Rubik',sans-serif;font-size:14px;line-height:1.6;color:var(--ink);
+    background:var(--card);border:1.5px solid var(--sun-deep);border-radius:10px;
+    padding:12px 14px;text-align:center;
+  }
+  .calc-result b{font-family:'Suez One',serif;font-size:17px;}
+
+  /* ---------- LANDING PAGE BUILDER MODAL ---------- */
+  #landing-backdrop, #install-guide-backdrop{
+    position:fixed;inset:0;background:rgba(36,38,31,0.55);
+    display:none;z-index:70;
+  }
+  #landing-modal{
+    position:fixed;top:50%;left:50%;
+    width:min(880px, 95vw);max-height:92vh;
+    background:var(--paper);border-radius:20px;border:2px solid var(--line);
+    box-shadow:0 24px 70px rgba(36,38,31,0.4);
+    display:none;flex-direction:column;overflow:hidden;z-index:71;
+    transform:translate(-50%,-50%) scale(.96);opacity:0;
+    transition:transform .25s ease, opacity .25s ease;
+  }
+  #landing-modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  #landing-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:20px 24px 26px;}
+
+  #install-guide-modal{
+    position:fixed;top:50%;left:50%;
+    width:min(560px, 92vw);max-height:86vh;
+    background:var(--paper);border-radius:20px;border:2px solid var(--line);
+    box-shadow:0 20px 60px rgba(36,38,31,0.35);
+    display:none;flex-direction:column;overflow:hidden;z-index:71;
+    transform:translate(-50%,-50%) scale(.96);opacity:0;
+    transition:transform .25s ease, opacity .25s ease;
+  }
+  #install-guide-modal.open{transform:translate(-50%,-50%) scale(1);opacity:1;}
+  #install-guide-body{flex:1 1 auto;min-height:0;overflow-y:auto;padding:20px 24px 26px;}
+  .install-step{
+    display:flex;gap:12px;margin-bottom:14px;
+  }
+  .install-step-num{
+    flex:0 0 auto;width:26px;height:26px;border-radius:50%;
+    background:var(--sun-deep);color:#fff;font-family:'Heebo',sans-serif;font-weight:700;font-size:13px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .install-step-text{font-family:'Rubik',sans-serif;font-size:13.5px;line-height:1.55;color:var(--ink);}
+
+  .intake-field{margin-bottom:16px;}
+  .intake-field label{
+    display:block;font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:600;color:var(--ink);
+    margin-bottom:5px;
+  }
+  .intake-hint{
+    display:block;font-family:'Heebo',sans-serif;font-size:11px;color:var(--ink-soft);
+    margin-bottom:5px;font-weight:400;
+  }
+  .intake-field textarea{
+    width:100%;font-family:'Rubik',sans-serif;font-size:13.5px;min-height:70px;
+    padding:9px 12px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;resize:vertical;
+  }
+  .intake-field textarea:focus{border-color:var(--sun-deep);}
+  .intake-file-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+  .intake-file-btn{
+    font-family:'Heebo',sans-serif;font-size:12.5px;font-weight:600;
+    background:var(--card);border:1.5px dashed var(--line);color:var(--ink-soft);
+    border-radius:10px;padding:9px 14px;cursor:pointer;
+  }
+  .intake-file-btn:hover{border-color:var(--sun-deep);color:var(--ink);}
+  .intake-preview-thumb{
+    width:52px;height:52px;border-radius:10px;object-fit:cover;border:1.5px solid var(--line);
+  }
+  .intake-file-name{font-family:'Heebo',sans-serif;font-size:11.5px;color:var(--ink-soft);}
+
+  .landing-preview-frame{
+    width:100%;height:min(60vh, 640px);border:1.5px solid var(--line);border-radius:14px;
+    background:#fff;
+  }
+  .landing-actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .landing-actions .btn{flex:1 1 200px;}
+  .landing-fallback-box{
+    margin-top:12px;
+  }
+  .landing-fallback-box textarea{
+    width:100%;min-height:140px;font-family:monospace;font-size:11px;
+    padding:10px;border-radius:10px;border:1.5px solid var(--line);background:var(--card);color:var(--ink);
+  }
+
+  @media (max-width: 720px){
+    #brand h1{font-size:18px;}
+    #brand .eyebrow{display:none;}
+    #topbar{padding:10px 12px;gap:8px;}
+    #tabs-bar{padding:8px 12px;}
+    .btn{padding:10px 14px;font-size:13px;}
+    #empty-state h2{font-size:24px;}
+    #status-line .root-chip{max-width:140px;}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="topbar">
+    <div id="brand">
+      <span class="eyebrow">מפת רעיונות לתוכן</span>
+      <h1><span class="sun-mark">☀</span> שמש הרעיונות</h1>
+    </div>
+    <div id="status-line">
+      <span class="root-chip" id="root-chip"></span>
+      <button class="btn ghost" id="view-toggle" type="button">הצג כרשימה</button>
+    </div>
+  </div>
+
+  <div id="tabs-bar"></div>
+
+  <div id="main-area">
+    <div id="empty-state">
+      <h2>הכניסו נושא אחד. קבלו זרם רעיונות אינסופי.</h2>
+      <p>הזינו את נושא הליבה של העסק שלכם. מכל רעיון שיוצג, אפשר ללחוץ על "עוד רעיונות" ולהמשיך להסתעף — כל הצעה נבדקת מול מגמות ותוכן מתחרים באינטרנט לפני שהיא מוצגת.</p>
+      <div id="topic-form">
+        <input id="topic-input" type="text" placeholder="הנושא המרכזי, למשל: כושר לנשים לאחר הריון" maxlength="60"/>
+        <button class="btn" id="start-btn" type="button">התחילו למפות</button>
+      </div>
+    </div>
+
+    <div id="viewport">
+      <div id="world">
+        <div id="sun-glow"></div>
+        <svg id="edges"></svg>
+        <div id="nodes-layer"></div>
+      </div>
+      <div id="controls">
+        <button class="ctrl-btn" id="zoom-in" title="הגדלה">+</button>
+        <button class="ctrl-btn" id="zoom-out" title="הקטנה">–</button>
+        <button class="ctrl-btn" id="zoom-reset" title="מרכוז" style="font-size:14px;">⟲</button>
+      </div>
+    </div>
+
+    <div id="list-view">
+      <div id="list-container"></div>
+    </div>
+  </div>
+
+  <div id="error-toast"></div>
+
+  <div id="script-backdrop"></div>
+  <div id="script-panel">
+    <div class="script-panel-header">
+      <div>
+        <span class="eyebrow">תסריט לריל ויראלי</span>
+        <h3 id="script-topic-title"></h3>
+      </div>
+      <button id="script-close" type="button" title="סגירה">✕</button>
+    </div>
+    <div id="script-body"></div>
+    <div class="script-panel-footer">
+      <div class="script-regen-wrap">
+        <button id="script-regenerate" class="btn ghost" type="button">🔄 תסריט אחר ▾</button>
+      </div>
+      <button id="script-copy" class="btn" type="button">העתקת התסריט</button>
+    </div>
+  </div>
+
+  <div id="bio-backdrop"></div>
+  <div id="bio-panel">
+    <div class="script-panel-header">
+      <div>
+        <span class="eyebrow">ביו ממיר לעמוד העסקי</span>
+        <h3 id="bio-topic-title"></h3>
+      </div>
+      <button id="bio-close" type="button" title="סגירה">✕</button>
+    </div>
+    <div id="bio-body"></div>
+    <div class="script-panel-footer" id="bio-footer"></div>
+  </div>
+
+  <div id="product-backdrop"></div>
+  <div id="product-modal">
+    <div class="product-modal-header">
+      <div>
+        <span class="eyebrow">רעיון למוצר רווחי</span>
+        <h3 id="product-topic-title"></h3>
+      </div>
+      <button id="product-close" type="button" title="סגירה">✕</button>
+    </div>
+    <div id="product-body"></div>
+  </div>
+
+  <div id="landing-backdrop"></div>
+  <div id="landing-modal">
+    <div class="product-modal-header">
+      <div>
+        <span class="eyebrow">בניית דף נחיתה</span>
+        <h3 id="landing-topic-title"></h3>
+      </div>
+      <button id="landing-close" type="button" title="סגירה">✕</button>
+    </div>
+    <div id="landing-body"></div>
+  </div>
+
+  <div id="install-guide-backdrop"></div>
+  <div id="install-guide-modal">
+    <div class="product-modal-header">
+      <div><span class="eyebrow">התקנה באתר</span><h3>מדריך התקנה בוורדפרס / Elementor</h3></div>
+      <button id="install-guide-close" type="button" title="סגירה">✕</button>
+    </div>
+    <div id="install-guide-body"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  const CENTER = 3000;
+  const STORAGE_KEY = 'mindmap:workspace:v2';
+
+  // ⚙️ Running this tool OUTSIDE claude.ai (e.g. on your own WordPress site)?
+  // Direct calls to api.anthropic.com only work inside Claude's own preview.
+  // Deploy the small proxy server (see the Cloudflare Worker guide provided
+  // alongside this file) and paste its URL here — everything else just works.
+  const API_ENDPOINT = "https://sun-of-ideas-proxy.eyalmad.workers.dev/";
+
+  const PALETTE = [
+    {stroke:'#1E6E4C', tint:'#EAF6EF'},
+    {stroke:'#146B7A', tint:'#E7F4F6'},
+    {stroke:'#6B3F6B', tint:'#F5EAF5'},
+    {stroke:'#A2472F', tint:'#FBEAE4'},
+    {stroke:'#3C4F9E', tint:'#EAEDF9'},
+    {stroke:'#97741A', tint:'#FBF3DE'}
+  ];
+
+  function newTabState(){
+    return {
+      id: null, title: 'מפה חדשה',
+      rootId: null, nodes: {}, paletteCursor: 0,
+      scale: 0.85, panX: 0, panY: 0, nextId: 1,
+      bio: null,
+      expandedNodeIds: {},
+      productOffer: null,
+      productPopupAutoShown: false
+    };
+  }
+
+  let workspace = {
+    activeId: null,
+    order: [],
+    viewMode: 'map',
+    tabCounter: 1,
+    tabs: {}
+  };
+  let state = newTabState(); // live reference to workspace.tabs[workspace.activeId]
+
+  const closeArmed = new Map(); // tabId -> timer, transient UI-only state
+
+  const tabsBar = document.getElementById('tabs-bar');
+  const emptyState = document.getElementById('empty-state');
+  const viewport = document.getElementById('viewport');
+  const world = document.getElementById('world');
+  const edgesSvg = document.getElementById('edges');
+  const nodesLayer = document.getElementById('nodes-layer');
+  const sunGlow = document.getElementById('sun-glow');
+  sunGlow.style.left = (CENTER - 1000) + 'px';
+  sunGlow.style.top = (CENTER - 1000) + 'px';
+  const controls = document.getElementById('controls');
+  const listView = document.getElementById('list-view');
+  const listContainer = document.getElementById('list-container');
+  const topicInput = document.getElementById('topic-input');
+  const statusLine = document.getElementById('status-line');
+  const rootChip = document.getElementById('root-chip');
+  const viewToggleBtn = document.getElementById('view-toggle');
+  const errorToast = document.getElementById('error-toast');
+  const scriptBackdrop = document.getElementById('script-backdrop');
+  const scriptPanel = document.getElementById('script-panel');
+  const scriptTopicTitle = document.getElementById('script-topic-title');
+  const scriptBodyEl = document.getElementById('script-body');
+  const scriptCloseBtn = document.getElementById('script-close');
+  const scriptRegenBtn = document.getElementById('script-regenerate');
+  const scriptCopyBtn = document.getElementById('script-copy');
+  let scriptPanelNodeId = null;
+
+  const bioBackdrop = document.getElementById('bio-backdrop');
+  const bioPanel = document.getElementById('bio-panel');
+  const bioTopicTitle = document.getElementById('bio-topic-title');
+  const bioBodyEl = document.getElementById('bio-body');
+  const bioCloseBtn = document.getElementById('bio-close');
+  const bioFooterEl = document.getElementById('bio-footer');
+  let bioPanelOpen = false;
+
+  const productBackdrop = document.getElementById('product-backdrop');
+  const productModal = document.getElementById('product-modal');
+  const productTopicTitle = document.getElementById('product-topic-title');
+  const productBodyEl = document.getElementById('product-body');
+  const productCloseBtn = document.getElementById('product-close');
+  let productModalOpen = false;
+
+  const landingBackdrop = document.getElementById('landing-backdrop');
+  const landingModal = document.getElementById('landing-modal');
+  const landingTopicTitle = document.getElementById('landing-topic-title');
+  const landingBodyEl = document.getElementById('landing-body');
+  const landingCloseBtn = document.getElementById('landing-close');
+  let landingModalOpen = false;
+
+  const installGuideBackdrop = document.getElementById('install-guide-backdrop');
+  const installGuideModal = document.getElementById('install-guide-modal');
+  const installGuideBodyEl = document.getElementById('install-guide-body');
+  const installGuideCloseBtn = document.getElementById('install-guide-close');
+
+  function showError(msg){
+    errorToast.textContent = msg;
+    errorToast.style.display = 'block';
+    clearTimeout(showError._t);
+    showError._t = setTimeout(()=>{ errorToast.style.display='none'; }, 4200);
+  }
+
+  function applyTransform(){
+    world.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
+  }
+  function centerOnRoot(){
+    const rect = viewport.getBoundingClientRect();
+    const root = state.nodes[state.rootId];
+    const cx = root ? root.x : CENTER;
+    const cy = root ? root.y : CENTER;
+    state.panX = rect.width/2 - cx*state.scale;
+    state.panY = rect.height/2 - cy*state.scale;
+    applyTransform();
+  }
+
+  // ---------- Persistence ----------
+  async function persist(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(workspace), false);
+    }catch(e){ /* non-fatal */ }
+  }
+  async function restore(){
+    try{
+      const res = await window.storage.get(STORAGE_KEY);
+      if(res && res.value){
+        const parsed = JSON.parse(res.value);
+        if(parsed && parsed.tabs && parsed.order && parsed.order.length){
+          workspace = parsed;
+          if(!workspace.viewMode) workspace.viewMode = 'map';
+          if(!workspace.tabCounter) workspace.tabCounter = workspace.order.length + 1;
+          if(!workspace.activeId || !workspace.tabs[workspace.activeId]){
+            workspace.activeId = workspace.order[0];
+          }
+          // Root nodes are never individually pinned anymore (dragging the sun
+          // pans the whole canvas instead) — clear any stale flag from older saves.
+          Object.values(workspace.tabs).forEach(t=>{
+            if(t.rootId && t.nodes && t.nodes[t.rootId]) t.nodes[t.rootId].pinned = false;
+          });
+          state = workspace.tabs[workspace.activeId];
+          return true;
+        }
+      }
+    }catch(e){ /* key missing or bad json, fine */ }
+    return false;
+  }
+
+  // ---------- Layout (map) ----------
+  function relayout(){
+    const root = state.nodes[state.rootId];
+    if(!root) return;
+    if(!root.pinned){ root.x = CENTER; root.y = CENTER; }
+    if(root.outAngle == null) root.outAngle = -90;
+    placeChildren(root);
+  }
+  function placeChildren(node){
+    const kids = node.children.map(id => state.nodes[id]).filter(Boolean);
+    if(kids.length === 0) return;
+    const depth = node.level + 1;
+    const radius = depth === 1 ? 320 : 320 + (depth-1)*250;
+
+    if(node.level === 0){
+      const step = 360/kids.length;
+      kids.forEach((k,i)=> setPos(k, node, i*step, radius));
+    } else {
+      const coneWidth = depth <= 2 ? 140 : depth === 3 ? 105 : depth === 4 ? 80 : 62;
+      const base = node.outAngle;
+      if(kids.length === 1){
+        setPos(kids[0], node, base, radius);
+      } else {
+        const start = base - coneWidth/2;
+        kids.forEach((k,i)=>{
+          const ang = start + (coneWidth*i)/(kids.length-1);
+          setPos(k, node, ang, radius);
+        });
+      }
+    }
+    kids.forEach(k => placeChildren(k));
+  }
+  function setPos(node, parent, angleDeg, radius){
+    if(node.pinned){
+      // Keep the user's manual placement; still remember an outward angle
+      // so any of ITS children continue to fan out sensibly.
+      if(node.outAngle == null) node.outAngle = angleDeg;
+      return;
+    }
+    const rad = angleDeg*Math.PI/180;
+    node.x = parent.x + Math.cos(rad)*radius;
+    node.y = parent.y + Math.sin(rad)*radius;
+    node.outAngle = angleDeg;
+  }
+
+  // ---------- Rendering: map ----------
+  let nodeEls = {};
+  let actionEls = {};
+  let edgeEls = {};
+
+  function edgePathD(parent, node){
+    const mx = (parent.x + node.x)/2;
+    const my = (parent.y + node.y)/2;
+    const dx = node.x - parent.x, dy = node.y - parent.y;
+    const nx = -dy, ny = dx;
+    const len = Math.hypot(nx,ny) || 1;
+    const curveAmt = 26;
+    const cx = mx + (nx/len)*curveAmt;
+    const cy = my + (ny/len)*curveAmt;
+    return `M ${parent.x} ${parent.y} Q ${cx} ${cy} ${node.x} ${node.y}`;
+  }
+
+  function render(){
+    nodesLayer.innerHTML = '';
+    edgesSvg.innerHTML = '';
+    nodeEls = {}; actionEls = {}; edgeEls = {};
+    const root = state.nodes[state.rootId];
+    if(!root){ return; }
+
+    Object.values(state.nodes).forEach(node=>{
+      if(node.parentId){
+        const parent = state.nodes[node.parentId];
+        if(parent){
+          const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+          path.setAttribute('d', edgePathD(parent, node));
+          path.setAttribute('class','edge-path');
+          const colorIdx = node.colorIdx != null ? node.colorIdx : 0;
+          path.setAttribute('stroke', PALETTE[colorIdx % PALETTE.length].stroke);
+          edgesSvg.appendChild(path);
+          edgeEls[node.id] = path;
+        }
+      }
+    });
+
+    Object.values(state.nodes).forEach(node=>{
+      const el = document.createElement('div');
+      const isRootNode = node.id === state.rootId;
+      const lvlClass = isRootNode ? '' : (' lvl-' + Math.min(node.level, 1));
+      el.className = 'node' + (isRootNode ? ' root' : lvlClass);
+      el.style.left = node.x + 'px';
+      el.style.top = node.y + 'px';
+      const colorIdx = node.colorIdx != null ? node.colorIdx : 0;
+      if(!isRootNode){
+        const c = PALETTE[colorIdx % PALETTE.length];
+        el.style.border = '2px solid ' + c.stroke;
+        el.style.background = `radial-gradient(circle at 34% 30%, ${c.tint} 0%, ${c.tint} 58%, ${c.stroke}33 100%)`;
+      }
+      const textSpan = document.createElement('span');
+      textSpan.textContent = node.text;
+      el.appendChild(textSpan);
+
+      if(node.searched){
+        const badge = document.createElement('span');
+        badge.className = 'search-badge';
+        badge.textContent = '🔎 נבדק';
+        el.appendChild(badge);
+      }
+      if(!isRootNode){
+        const del = document.createElement('span');
+        del.className = 'del-btn';
+        del.textContent = '✕';
+        del.title = 'הסר ענף';
+        del.addEventListener('click', (e)=>{ e.stopPropagation(); deleteNode(node.id); });
+        el.appendChild(del);
+      }
+      attachNodeDrag(el, node);
+      nodesLayer.appendChild(el);
+      nodeEls[node.id] = el;
+
+      // Measure the node's real rendered size so the actions row below it
+      // never overlaps the node itself (fixed-height guesses broke on wrapped text).
+      const halfHeight = el.offsetHeight / 2;
+
+      const actionsRow = document.createElement('div');
+      actionsRow.className = 'node-actions';
+      actionsRow.style.left = node.x + 'px';
+      actionsRow.style.top = (node.y + halfHeight + 12) + 'px';
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'more-btn' + (node.loading ? ' loading' : '') + (node.error ? ' error' : '');
+      btn.textContent = node.loading ? '' : (node.error ? '⚠ שגיאה — לחצו לניסיון חוזר' : '+ עוד רעיונות');
+      if(node.loading){
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        btn.appendChild(dot);
+        btn.appendChild(document.createTextNode(' חושב ובודק אונליין…'));
+      }
+      btn.addEventListener('click', ()=> generateChildren(node.id));
+      actionsRow.appendChild(btn);
+
+      const scriptReady = node.reelScript && node.reelScript.status === 'ready';
+      const scriptBtn = document.createElement('button');
+      scriptBtn.type = 'button';
+      scriptBtn.className = 'script-btn' + (scriptReady ? ' ready' : '');
+      scriptBtn.title = 'כתוב לי תסריט לריל ויראלי';
+      scriptBtn.textContent = scriptReady ? '🎬 תסריט מוכן' : '🎬 תסריט לריל';
+      scriptBtn.addEventListener('click', ()=> openScriptPanel(node.id));
+      actionsRow.appendChild(scriptBtn);
+
+      if(isRootNode){
+        const bioReady = state.bio && state.bio.status === 'ready';
+        const bioBtn = document.createElement('button');
+        bioBtn.type = 'button';
+        bioBtn.className = 'script-btn bio-btn' + (bioReady ? ' ready' : '');
+        bioBtn.title = 'כתוב לי ביו ממיר';
+        bioBtn.textContent = bioReady ? '✍️ ביו מוכן' : '✍️ ביו ממיר';
+        bioBtn.addEventListener('click', ()=> openBioPanel());
+        actionsRow.appendChild(bioBtn);
+
+        const expandedCount = state.expandedNodeIds ? Object.keys(state.expandedNodeIds).length : 0;
+        if(expandedCount >= 3){
+          const productReady = state.productOffer && state.productOffer.status !== 'idle';
+          const productBtn = document.createElement('button');
+          productBtn.type = 'button';
+          productBtn.className = 'script-btn product-btn' + (productReady ? ' ready' : '');
+          productBtn.title = 'רעיון למוצר רווחי';
+          productBtn.textContent = productReady ? '💡 רעיון מוכן' : '💡 רעיון למוצר';
+          productBtn.addEventListener('click', ()=> openProductPopup());
+          actionsRow.appendChild(productBtn);
+        }
+      }
+
+      nodesLayer.appendChild(actionsRow);
+      actionEls[node.id] = actionsRow;
+    });
+  }
+
+  function updateNodePosition(nodeId){
+    const node = state.nodes[nodeId];
+    if(!node) return;
+    const el = nodeEls[nodeId];
+    if(el){
+      el.style.left = node.x + 'px';
+      el.style.top = node.y + 'px';
+    }
+    const actionsRow = actionEls[nodeId];
+    if(actionsRow && el){
+      const halfHeight = el.offsetHeight / 2;
+      actionsRow.style.left = node.x + 'px';
+      actionsRow.style.top = (node.y + halfHeight + 12) + 'px';
+    }
+    const ownEdge = edgeEls[nodeId];
+    if(ownEdge && node.parentId && state.nodes[node.parentId]){
+      ownEdge.setAttribute('d', edgePathD(state.nodes[node.parentId], node));
+    }
+    node.children.forEach(cid=>{
+      const childEdge = edgeEls[cid];
+      const child = state.nodes[cid];
+      if(childEdge && child){
+        childEdge.setAttribute('d', edgePathD(node, child));
+      }
+    });
+  }
+
+  function attachNodeDrag(el, node){
+    let dragging = false;
+    let moved = false;
+    let startClientX = 0, startClientY = 0;
+    let startNodeX = 0, startNodeY = 0;
+
+    el.addEventListener('pointerdown', (e)=>{
+      if(node.id === state.rootId) return; // let this bubble up to canvas panning instead
+      if(e.target.closest('.del-btn')) return;
+      dragging = true;
+      moved = false;
+      startClientX = e.clientX;
+      startClientY = e.clientY;
+      startNodeX = node.x;
+      startNodeY = node.y;
+      el.classList.add('dragging');
+      el.setPointerCapture(e.pointerId);
+      e.stopPropagation();
+    });
+    el.addEventListener('pointermove', (e)=>{
+      if(!dragging) return;
+      const dxScreen = e.clientX - startClientX;
+      const dyScreen = e.clientY - startClientY;
+      if(!moved && Math.hypot(dxScreen, dyScreen) > 4) moved = true;
+      if(!moved) return;
+      node.x = startNodeX + dxScreen / state.scale;
+      node.y = startNodeY + dyScreen / state.scale;
+      node.pinned = true;
+      updateNodePosition(node.id);
+      e.stopPropagation();
+    });
+    function endDrag(e){
+      if(!dragging) return;
+      dragging = false;
+      el.classList.remove('dragging');
+      if(moved) persist();
+    }
+    el.addEventListener('pointerup', endDrag);
+    el.addEventListener('pointercancel', endDrag);
+    el.addEventListener('dblclick', (e)=>{
+      if(node.id === state.rootId) return;
+      if(!node.pinned) return;
+      e.stopPropagation();
+      node.pinned = false;
+      relayout();
+      render();
+      persist();
+    });
+  }
+
+  // ---------- Rendering: list ----------
+  function renderListView(){
+    listContainer.innerHTML = '';
+    if(!state.rootId || !state.nodes[state.rootId]) return;
+    const ul = document.createElement('ul');
+    ul.className = 'list-tree';
+    ul.appendChild(buildListItem(state.nodes[state.rootId], true));
+    listContainer.appendChild(ul);
+  }
+  function buildListItem(node, isRoot){
+    const li = document.createElement('li');
+    li.className = 'list-item' + (isRoot ? ' is-root' : '');
+    const row = document.createElement('div');
+    row.className = 'list-row';
+    const hasKids = node.children.length > 0;
+    const caret = document.createElement('span');
+    caret.className = 'list-caret' + (hasKids ? '' : ' empty');
+    caret.textContent = hasKids ? (node.collapsed ? '◂' : '▾') : '·';
+    if(hasKids){
+      caret.addEventListener('click', ()=>{ node.collapsed = !node.collapsed; renderListView(); persist(); });
+    }
+    row.appendChild(caret);
+    if(!isRoot){
+      const colorIdx = node.colorIdx != null ? node.colorIdx : 0;
+      row.style.setProperty('--branch-color', PALETTE[colorIdx % PALETTE.length].stroke);
+    }
+    const label = document.createElement('span');
+    label.className = 'list-label';
+    label.textContent = node.text;
+    row.appendChild(label);
+    if(node.searched){
+      const badge = document.createElement('span');
+      badge.className = 'list-search-badge';
+      badge.textContent = '🔎';
+      row.appendChild(badge);
+    }
+    const moreBtn = document.createElement('button');
+    moreBtn.type = 'button';
+    moreBtn.className = 'list-more-btn' + (node.loading ? ' loading' : '') + (node.error ? ' error' : '');
+    moreBtn.textContent = node.loading ? 'בודק אונליין…' : (node.error ? '⚠ נסה שוב' : '+ עוד רעיונות');
+    moreBtn.addEventListener('click', ()=> generateChildren(node.id));
+    row.appendChild(moreBtn);
+
+    const scriptReady = node.reelScript && node.reelScript.status === 'ready';
+    const scriptBtn = document.createElement('button');
+    scriptBtn.type = 'button';
+    scriptBtn.className = 'list-script-btn' + (scriptReady ? ' ready' : '');
+    scriptBtn.title = 'כתוב לי תסריט לריל ויראלי';
+    scriptBtn.textContent = scriptReady ? '🎬 תסריט מוכן' : '🎬 תסריט לריל';
+    scriptBtn.addEventListener('click', ()=> openScriptPanel(node.id));
+    row.appendChild(scriptBtn);
+    if(isRoot){
+      const bioReady = state.bio && state.bio.status === 'ready';
+      const bioBtn = document.createElement('button');
+      bioBtn.type = 'button';
+      bioBtn.className = 'list-script-btn list-bio-btn' + (bioReady ? ' ready' : '');
+      bioBtn.title = 'כתוב לי ביו ממיר';
+      bioBtn.textContent = bioReady ? '✍️ ביו מוכן' : '✍️ ביו ממיר';
+      bioBtn.addEventListener('click', ()=> openBioPanel());
+      row.appendChild(bioBtn);
+
+      const expandedCount = state.expandedNodeIds ? Object.keys(state.expandedNodeIds).length : 0;
+      if(expandedCount >= 3){
+        const productReady = state.productOffer && state.productOffer.status !== 'idle';
+        const productBtn = document.createElement('button');
+        productBtn.type = 'button';
+        productBtn.className = 'list-script-btn list-product-btn' + (productReady ? ' ready' : '');
+        productBtn.title = 'רעיון למוצר רווחי';
+        productBtn.textContent = productReady ? '💡 רעיון מוכן' : '💡 רעיון למוצר';
+        productBtn.addEventListener('click', ()=> openProductPopup());
+        row.appendChild(productBtn);
+      }
+    }
+    if(!isRoot){
+      const del = document.createElement('span');
+      del.className = 'list-del-btn';
+      del.textContent = '✕';
+      del.addEventListener('click', ()=> deleteNode(node.id));
+      row.appendChild(del);
+    }
+    li.appendChild(row);
+    if(hasKids && !node.collapsed){
+      const childUl = document.createElement('ul');
+      childUl.className = 'list-children';
+      node.children.forEach(cid => childUl.appendChild(buildListItem(state.nodes[cid], false)));
+      li.appendChild(childUl);
+    }
+    return li;
+  }
+
+  function refreshViews(){
+    render();
+    renderListView();
+  }
+
+  // ---------- Chrome (tabs, toggle, empty-state) ----------
+  function updateChrome(){
+    const hasRoot = !!(state.rootId && state.nodes[state.rootId]);
+    emptyState.style.display = hasRoot ? 'none' : 'flex';
+    statusLine.style.display = hasRoot ? 'flex' : 'none';
+    viewport.style.display = (hasRoot && workspace.viewMode === 'map') ? 'block' : 'none';
+    controls.style.display = (hasRoot && workspace.viewMode === 'map') ? 'flex' : 'none';
+    listView.style.display = (hasRoot && workspace.viewMode === 'list') ? 'block' : 'none';
+    if(hasRoot) rootChip.textContent = state.nodes[state.rootId].text;
+    viewToggleBtn.textContent = workspace.viewMode === 'list' ? 'הצג כמפה' : 'הצג כרשימה';
+    if(!hasRoot) topicInput.value = '';
+  }
+
+  function toggleViewMode(){
+    workspace.viewMode = workspace.viewMode === 'list' ? 'map' : 'list';
+    updateChrome();
+    if(state.rootId){
+      if(workspace.viewMode === 'map'){ render(); centerOnRoot(); }
+      else { renderListView(); }
+    }
+    persist();
+  }
+  viewToggleBtn.addEventListener('click', toggleViewMode);
+
+  function renderTabs(){
+    tabsBar.innerHTML = '';
+    workspace.order.forEach(id=>{
+      const t = workspace.tabs[id];
+      if(!t) return;
+      const pill = document.createElement('button');
+      pill.type = 'button';
+      pill.className = 'tab-pill' + (id === workspace.activeId ? ' active' : '');
+      const label = document.createElement('span');
+      label.className = 'tab-label';
+      const title = t.title || 'מפה חדשה';
+      label.textContent = title.length > 22 ? title.slice(0,22) + '…' : title;
+      pill.appendChild(label);
+
+      const closeX = document.createElement('span');
+      closeX.className = 'tab-close';
+      closeX.textContent = closeArmed.has(id) ? 'למחוק?' : '✕';
+      closeX.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        if(closeArmed.has(id)){
+          clearTimeout(closeArmed.get(id));
+          closeArmed.delete(id);
+          closeTab(id);
+        } else {
+          const timer = setTimeout(()=>{ closeArmed.delete(id); renderTabs(); }, 3000);
+          closeArmed.set(id, timer);
+          renderTabs();
+        }
+      });
+      pill.appendChild(closeX);
+
+      pill.addEventListener('click', ()=>{ if(id !== workspace.activeId) switchTab(id); });
+      tabsBar.appendChild(pill);
+    });
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'tab-add';
+    addBtn.textContent = '+ תחום חדש';
+    addBtn.addEventListener('click', ()=> createTab(true));
+    tabsBar.appendChild(addBtn);
+  }
+
+  function createTab(switchToIt){
+    const id = 'm' + (workspace.tabCounter++);
+    const st = newTabState();
+    st.id = id;
+    workspace.tabs[id] = st;
+    workspace.order.push(id);
+    if(switchToIt){
+      switchTab(id);
+    } else {
+      renderTabs();
+      persist();
+    }
+    return id;
+  }
+
+  function switchTab(id){
+    if(!workspace.tabs[id]) return;
+    closeScriptPanel();
+    closeBioPanel();
+    closeProductPopup();
+    closeLandingModal();
+    closeInstallGuide();
+    workspace.activeId = id;
+    state = workspace.tabs[id];
+    renderTabs();
+    updateChrome();
+    if(state.rootId){
+      relayout();
+      render();
+      renderListView();
+      centerOnRoot();
+    }
+    persist();
+  }
+
+  function closeTab(id){
+    const wasActive = workspace.activeId === id;
+    delete workspace.tabs[id];
+    workspace.order = workspace.order.filter(x => x !== id);
+    if(workspace.order.length === 0){
+      createTab(true);
+      return;
+    }
+    if(wasActive){
+      switchTab(workspace.order[workspace.order.length - 1]);
+    } else {
+      renderTabs();
+      persist();
+    }
+  }
+
+  // ---------- Mutations ----------
+  function createNode(text, parentId, colorIdx){
+    const id = 'n' + (state.nextId++);
+    const parent = parentId ? state.nodes[parentId] : null;
+    state.nodes[id] = {
+      id, text, parentId: parentId || null,
+      children: [], level: parent ? parent.level + 1 : 0,
+      x: CENTER, y: CENTER, outAngle: 0,
+      colorIdx: colorIdx != null ? colorIdx : 0,
+      loading:false, searched:false, error:false,
+      collapsed: parent ? true : false,
+      reelScript: null,
+      pinned: false
+    };
+    if(parent) parent.children.push(id);
+    return id;
+  }
+  function deleteNode(id){
+    const node = state.nodes[id];
+    if(!node || id === state.rootId) return;
+    const toRemove = [];
+    (function collect(nid){
+      toRemove.push(nid);
+      state.nodes[nid].children.forEach(collect);
+    })(id);
+    toRemove.forEach(nid => delete state.nodes[nid]);
+    if(scriptPanelNodeId && toRemove.indexOf(scriptPanelNodeId) !== -1){
+      closeScriptPanel();
+    }
+    const parent = state.nodes[node.parentId];
+    if(parent) parent.children = parent.children.filter(c => c !== id);
+    relayout();
+    refreshViews();
+    persist();
+  }
+
+  function ancestorPath(nodeId){
+    const path = [];
+    let cur = state.nodes[nodeId];
+    while(cur){ path.unshift(cur.text); cur = cur.parentId ? state.nodes[cur.parentId] : null; }
+    return path;
+  }
+
+  async function generateChildren(nodeId, isManual){
+    if(isManual === undefined) isManual = true;
+    const node = state.nodes[nodeId];
+    if(!node || node.loading) return;
+    node.loading = true;
+    node.error = false;
+    refreshViews();
+
+    const rootText = state.nodes[state.rootId].text;
+    const path = ancestorPath(nodeId);
+    const existing = node.children.map(id => state.nodes[id].text);
+    const count = node.id === state.rootId ? 6 : 5;
+
+    try{
+      const ideas = await fetchIdeas(rootText, path, existing, count);
+      if(node.id === state.rootId){
+        ideas.list.forEach(text=>{
+          const cIdx = state.paletteCursor % PALETTE.length;
+          state.paletteCursor++;
+          const cid = createNode(text, nodeId, cIdx);
+          state.nodes[cid].searched = ideas.usedSearch;
+        });
+      } else {
+        const colorBase = node.colorIdx;
+        ideas.list.forEach(text=>{
+          const cid = createNode(text, nodeId, colorBase);
+          state.nodes[cid].searched = ideas.usedSearch;
+        });
+      }
+      node.collapsed = false;
+      relayout();
+      if(isManual){
+        if(!state.expandedNodeIds) state.expandedNodeIds = {};
+        state.expandedNodeIds[nodeId] = true;
+        checkProductOfferThreshold();
+      }
+    }catch(err){
+      console.error('generateChildren failed:', err);
+      node.error = true;
+      showError('לא הצלחתי לייצר רעיונות כרגע (' + (err && err.message ? err.message : 'שגיאה') + '). לחצו שוב על הכפתור לניסיון חוזר.');
+    } finally {
+      node.loading = false;
+      refreshViews();
+      persist();
+    }
+  }
+
+  async function callClaude(system, user, useTools){
+    const body = {
+      model: "claude-sonnet-4-6",
+      max_tokens: 2600,
+      system: system,
+      messages: [{ role: "user", content: user }]
+    };
+    if(useTools){
+      body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+    }
+    const response = await fetch(API_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01"
+      },
+      body: JSON.stringify(body)
+    });
+    if(!response.ok){
+      let detail = '';
+      try{ const errJson = await response.json(); detail = errJson && errJson.error && errJson.error.message ? errJson.error.message : ''; }catch(e){}
+      throw new Error('שגיאת שרת ' + response.status + (detail ? (': ' + detail) : ''));
+    }
+    const data = await response.json();
+    let usedSearch = false;
+    let text = '';
+    (data.content || []).forEach(item=>{
+      if(item.type === 'text' && item.text) text += item.text + '\n';
+      if(item.type === 'server_tool_use' || (item.name && String(item.name).includes('search'))) usedSearch = true;
+      if(item.type === 'mcp_tool_use') usedSearch = true;
+    });
+    return { text, usedSearch };
+  }
+
+  async function fetchIdeas(rootText, path, existing, count){
+    const branchLine = path.length > 1 ? path.join(' > ') : path[0];
+    const excludeLine = existing.length
+      ? `רעיונות שכבר קיימים בענף הזה (אל תציעו שוב רעיונות זהים או קרובים מדי אליהם): ${existing.join(', ')}.`
+      : '';
+    const system = `אתם אסטרטג/ית תוכן שיווקי דיגיטלי, מומחה/ית ביצירת רעיונות תוכן לרשתות חברתיות ולבלוג עבור עסקים קטנים.
+תפקידכם: להציע רעיונות תוכן חדשים, ממוקדים, קונקרטיים וקצרים (2 עד 6 מילים בעברית) שמסתעפים באופן טבעי מהענף שמתקבל.
+אם יש באפשרותכם לחפש באינטרנט, בדקו מגמות תוכן עדכניות ותוכן של מתחרים בנושא הרלוונטי, כדי שההצעות יהיו רעננות ומבוססות על מה שבאמת עובד היום.
+חשוב: לפחות אחד או שניים מהרעיונות שתציעו חייבים לנבוע משאלות, כאבים, פחדים או חששות אמיתיים שהקהל הרלוונטי מחפש ושואל אונליין (בפורומים, קבוצות פייסבוק, תגובות, שאלות נפוצות בגוגל) - אם יש באפשרותכם לחפש, בדקו מה אנשים מהקהל הזה באמת שואלים או חוששים מהם, ונסחו זאת ישירות כנושא תוכן שעונה על אותה שאלה/חשש (למשל בפורמט של השאלה עצמה, או זווית שמדברת ישירות לפחד הזה).
+השיבו אך ורק במבנה JSON array של מחרוזות בעברית, בלי טקסט נוסף לפני או אחרי, בלי הסברים, בלי markdown.`;
+    const user = `נושא הליבה של העסק: ${rootText}
+שרשרת הענף עד כה: ${branchLine}
+${excludeLine}
+הציעו ${count} רעיונות תוכן חדשים להמשך הענף הזה. החזירו אך ורק JSON array של מחרוזות.`;
+
+    try{
+      const first = await callClaude(system, user, true);
+      const list = parseIdeaList(first.text).slice(0, count);
+      if(list.length > 0){
+        return { list, usedSearch: first.usedSearch };
+      }
+    }catch(err){
+      console.warn('Search-assisted generation failed, falling back:', err);
+    }
+
+    const second = await callClaude(system, user, false);
+    const list2 = parseIdeaList(second.text).slice(0, count);
+    if(list2.length === 0){
+      throw new Error('לא הצלחתי לפרש את התשובה מהמודל');
+    }
+    return { list: list2, usedSearch: false };
+  }
+
+  // Finds the first complete, balanced {...} or [...] in text, respecting
+  // strings/escapes — far more robust than a greedy regex when the model
+  // adds any commentary before/after the JSON, or when nested braces exist.
+  function extractBalancedJSON(text, openChar, closeChar){
+    const start = text.indexOf(openChar);
+    if(start === -1) return null;
+    let depth = 0, inString = false, escaped = false;
+    for(let i = start; i < text.length; i++){
+      const ch = text[i];
+      if(inString){
+        if(escaped){ escaped = false; }
+        else if(ch === '\\'){ escaped = true; }
+        else if(ch === '"'){ inString = false; }
+        continue;
+      }
+      if(ch === '"'){ inString = true; continue; }
+      if(ch === openChar) depth++;
+      else if(ch === closeChar){
+        depth--;
+        if(depth === 0) return text.slice(start, i+1);
+      }
+    }
+    return null; // unbalanced / truncated — caller should treat as unparsable
+  }
+  function extractJSONObject(text){ return extractBalancedJSON(text, '{', '}'); }
+  function extractJSONArray(text){ return extractBalancedJSON(text, '[', ']'); }
+
+  function parseIdeaList(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONArray(cleaned);
+    if(match){
+      try{
+        const arr = JSON.parse(match);
+        if(Array.isArray(arr)) return arr.map(s => String(s).trim()).filter(Boolean);
+      }catch(e){ /* fall through */ }
+    }
+    return cleaned.split('\n')
+      .map(l => l.replace(/^[\s\-\*\d\.\)"׳'`]+/, '').replace(/["'`]+$/,'').trim())
+      .filter(l => l.length > 0 && l.length < 80);
+  }
+
+  // ---------- Reel script generation ----------
+  function parseScriptJSON(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONObject(cleaned);
+    if(!match) return null;
+    try{
+      const obj = JSON.parse(match);
+      if(obj && typeof obj.hook === 'string' && typeof obj.body === 'string'){
+        let referenceVideo = null;
+        if(obj.referenceVideo && typeof obj.referenceVideo === 'object' && typeof obj.referenceVideo.url === 'string' && /^https?:\/\//.test(obj.referenceVideo.url.trim())){
+          referenceVideo = {
+            url: obj.referenceVideo.url.trim(),
+            platform: obj.referenceVideo.platform ? String(obj.referenceVideo.platform).trim() : '',
+            engagementNote: obj.referenceVideo.engagementNote ? String(obj.referenceVideo.engagementNote).trim() : ''
+          };
+        }
+        return {
+          hook: obj.hook.trim(),
+          body: obj.body.trim(),
+          cta: obj.cta ? String(obj.cta).trim() : '',
+          shots: Array.isArray(obj.shots) ? obj.shots.map(s=>String(s).trim()).filter(Boolean) : [],
+          caption: obj.caption ? String(obj.caption).trim() : '',
+          hashtags: Array.isArray(obj.hashtags) ? obj.hashtags.map(s=>String(s).trim()).filter(Boolean) : [],
+          referenceVideo
+        };
+      }
+    }catch(e){ /* fall through */ }
+    return null;
+  }
+
+  const REEL_STYLES = [
+    { key:'story', label:'📖 סיפור אישי', desc:'רגע אמיתי אחד, ואז לקח שמתחבר לקריאה לפעולה', prompt:'כתבו את הריל כסיפור אישי קצר: התחילו ברגע קונקרטי אחד (לא כללי), עברו דרך קושי או תובנה, וסיימו בלקח שמתחבר ישירות לקריאה לפעולה.' },
+    { key:'tips', label:'📝 טיפים מהירים', desc:'"3 דברים שאף אחד לא אומר לך על..."', prompt:'כתבו את הריל כרשימת טיפים ממוספרת, קצרה וקצבית (בסגנון "3 דברים ש..."), כשכל טיפ הוא משפט אחד קצר וברור.' },
+    { key:'transformation', label:'🔄 לפני ואחרי', desc:'ניגודיות דרמטית בין מצב ישן לחדש', prompt:'כתבו את הריל כניגודיות דרמטית בין "לפני" ל"אחרי" - התחילו במצב הבעייתי הישן, והראו בבירור את השינוי הקונקרטי שקרה.' },
+    { key:'mythbust', label:'💥 מיתוס מול אמת', desc:'סותר אמונה רווחת בפתיחה שנויה במחלוקת', prompt:'כתבו את הריל כסתירת מיתוס או אמונה רווחת - פתחו בטענה שנויה במחלוקת שסותרת את מה שרוב האנשים חושבים, ואז הסבירו בקצרה למה זה נכון.' },
+    { key:'pov', label:'🎭 POV / סיטואציה מוכרת', desc:'רגע שהצופה מזהה מיד מהחיים שלו', prompt:'כתבו את הריל בסגנון POV - תארו רגע ספציפי ומוכר שהצופה מזהה מיד מהחיים שלו, מנקודת המבט של הדובר.' }
+  ];
+
+  async function fetchReelScript(rootText, path, styleKey){
+    const branchLine = path.join(' > ');
+    const specificTopic = path[path.length - 1];
+    const styleObj = REEL_STYLES.find(s => s.key === styleKey);
+    const styleLine = styleObj ? `\n9. סגנון נבחר לריל הזה: ${styleObj.prompt}` : '';
+    const system = `אתם קופירייטר/ית ואסטרטג/ית תוכן דיגיטלי מומחה/ית בכתיבת תסריטים לסרטוני רילס/רילים קצרים וויראליים (טיקטוק, אינסטגרם רילס, פייסבוק רילס).
+עקרונות חובה שאתם חייבים ליישם:
+1. הוק (Hook): 2-3 השניות הראשונות חייבות לעצור את הגלילה - שאלה מסקרנת, טענה מפתיעה, או פתיח דרמטי. בלי הקדמות מיותרות.
+2. ערך: התוכן חייב לתת ערך אמיתי - טיפ קונקרטי, תובנה, או סיפור שמניע רגש - לא סתם דיבור כללי.
+3. קריאה לפעולה (CTA) יחידה, ברורה וממוקדת בסוף - לא כמה קריאות פעולה שונות.
+4. אורך: כל התסריט (הוק + גוף + קריאה לפעולה) חייב להיות ניתן להקראה בתוך כדקה אחת בקצב טבעי (כ-130-150 מילים בעברית בסך הכל, לא יותר).
+5. שפה מדוברת, ישירה, בגוף שני, כאילו מדברים ישירות למצלמה - לא שפה כתובה/פורמלית.
+6. אם יש באפשרותכם לחפש באינטרנט, בדקו איזה סגנונות רילים, פתיחים ומבני תוכן עובדים היום בנישה הרלוונטית, ושלבו את זה בתסריט.
+7. אם הנושא הספציפי משקף שאלה, כאב, פחד או חשש של הקהל (ולא רק טיפ ניטרלי) - התחילו את ההוק מתוך אמפתיה אמיתית לתחושה הזו (בלי להמעיט בה), ואז תנו בגוף התסריט מענה או הקלה קונקרטיים, לא רק אמירה כללית שזה "בסדר".
+8. בנוסף, נסו לאתר באמצעות חיפוש באינטרנט סרטון ריל/טיקטוק אחד קיים ואמיתי, רלוונטי לנושא הספציפי, שיש לו מעורבות גבוהה בפועל (עשרות אלפי צפיות/לייקים לפחות, או מאות תגובות ומעלה). זהו קישור השראה בלבד - אל תמציאו קישור או נתוני מעורבות. אם לא מצאתם קישור אמיתי שכתובתו נבדקה בחיפוש, השאירו את referenceVideo כ-null.${styleLine}
+השיבו אך ורק במבנה JSON object הבא, בלי טקסט נוסף לפני או אחרי, בלי markdown:
+{"hook": "...", "body": "...", "cta": "...", "shots": ["...", "..."], "caption": "...", "hashtags": ["...", "..."], "referenceVideo": {"url": "...", "platform": "...", "engagementNote": "..."} }
+- hook: 1-2 משפטים בעברית, מוכנים להקראה, לרגע הפתיחה
+- body: גוף התסריט המלא, מוכן להקראה מילה במילה, בעברית
+- cta: משפט קריאה לפעולה אחד וקצר, בעברית
+- shots: מערך של 3-6 הנחיות צילום קצרות בעברית (עד 10 מילים כל אחת) שמתארות מה לצלם או להראות בכל קטע
+- caption: כיתוב קצר לפוסט עצמו, 1-2 משפטים בעברית
+- hashtags: מערך של 5-8 מילות מפתח/האשטגים רלוונטיים (בלי סימן #, נוסיף אותו בתצוגה)
+- referenceVideo: או אובייקט עם קישור אמיתי שנמצא בחיפוש (url, platform, engagementNote בעברית שמתאר את המעורבות), או null אם לא נמצא קישור אמיתי מספק`;
+    const user = `נושא הליבה של העסק: ${rootText}
+הנושא הספציפי לתסריט הריל: ${specificTopic}
+שרשרת הענף המלאה עד לנושא הזה: ${branchLine}
+כתבו תסריט אחד לריל ויראלי בעברית על הנושא הספציפי, לפי כל ההנחיות במערכת. החזירו אך ורק JSON object.`;
+
+    try{
+      const first = await callClaude(system, user, true);
+      const parsed = parseScriptJSON(first.text);
+      if(parsed) return Object.assign({}, parsed, { usedSearch: first.usedSearch, style: styleKey || null });
+    }catch(err){
+      console.warn('Search-assisted script generation failed, falling back:', err);
+    }
+
+    const second = await callClaude(system, user, false);
+    const parsed2 = parseScriptJSON(second.text);
+    if(!parsed2){
+      throw new Error('לא הצלחתי לפרש את התסריט מהמודל');
+    }
+    return Object.assign({}, parsed2, { usedSearch: false, style: styleKey || null });
+  }
+
+  async function openScriptPanel(nodeId){
+    const node = state.nodes[nodeId];
+    if(!node) return;
+    closeBioPanel();
+    closeProductPopup();
+    scriptPanelNodeId = nodeId;
+    closeStyleMenu();
+    scriptBackdrop.style.display = 'block';
+    scriptPanel.style.display = 'flex';
+    requestAnimationFrame(()=> scriptPanel.classList.add('open'));
+    renderScriptPanel();
+    if(!node.reelScript || node.reelScript.status !== 'ready'){
+      await generateScript(nodeId);
+    }
+  }
+  function closeScriptPanel(){
+    scriptPanel.classList.remove('open');
+    scriptBackdrop.style.display = 'none';
+    closeStyleMenu();
+    setTimeout(()=>{ if(!scriptPanel.classList.contains('open')) scriptPanel.style.display = 'none'; }, 320);
+    scriptPanelNodeId = null;
+  }
+  scriptCloseBtn.addEventListener('click', closeScriptPanel);
+  scriptBackdrop.addEventListener('click', closeScriptPanel);
+
+  async function generateScript(nodeId, styleKey){
+    const node = state.nodes[nodeId];
+    if(!node) return;
+    node.reelScript = { status: 'loading' };
+    renderScriptPanel();
+    refreshViews();
+    try{
+      const rootText = state.nodes[state.rootId].text;
+      const path = ancestorPath(nodeId);
+      const result = await fetchReelScript(rootText, path, styleKey);
+      node.reelScript = Object.assign({ status: 'ready' }, result);
+    }catch(err){
+      console.error('generateScript failed:', err);
+      node.reelScript = { status: 'error', message: err && err.message ? err.message : 'שגיאה' };
+    } finally {
+      renderScriptPanel();
+      refreshViews();
+      persist();
+    }
+  }
+
+  let styleMenuOpen = false;
+  function closeStyleMenu(){
+    styleMenuOpen = false;
+    const menu = document.getElementById('style-menu');
+    if(menu) menu.remove();
+  }
+  function toggleStyleMenu(){
+    if(styleMenuOpen){ closeStyleMenu(); return; }
+    styleMenuOpen = true;
+    const menu = document.createElement('div');
+    menu.id = 'style-menu';
+    menu.className = 'style-menu';
+    REEL_STYLES.forEach(s=>{
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'style-menu-item';
+      const title = document.createElement('span');
+      title.className = 'style-menu-title';
+      title.textContent = s.label;
+      const desc = document.createElement('span');
+      desc.className = 'style-menu-desc';
+      desc.textContent = s.desc;
+      item.appendChild(title);
+      item.appendChild(desc);
+      item.addEventListener('click', ()=>{
+        closeStyleMenu();
+        if(scriptPanelNodeId) generateScript(scriptPanelNodeId, s.key);
+      });
+      menu.appendChild(item);
+    });
+    scriptRegenBtn.parentElement.appendChild(menu);
+  }
+  scriptRegenBtn.addEventListener('click', toggleStyleMenu);
+  document.addEventListener('click', (e)=>{
+    if(!styleMenuOpen) return;
+    if(e.target.closest('.style-menu') || e.target === scriptRegenBtn) return;
+    closeStyleMenu();
+  });
+
+  function renderScriptPanel(){
+    if(!scriptPanelNodeId) return;
+    const node = state.nodes[scriptPanelNodeId];
+    if(!node){ closeScriptPanel(); return; }
+    scriptTopicTitle.textContent = node.text;
+    scriptBodyEl.innerHTML = '';
+    const rs = node.reelScript;
+
+    if(!rs || rs.status === 'loading'){
+      scriptRegenBtn.disabled = true;
+      scriptCopyBtn.disabled = true;
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'script-loading';
+      loadingEl.textContent = '✍️ כותב תסריט ובודק מה עובד היום ברילים…';
+      scriptBodyEl.appendChild(loadingEl);
+      return;
+    }
+    scriptRegenBtn.disabled = false;
+
+    if(rs.status === 'error'){
+      scriptCopyBtn.disabled = true;
+      const errEl = document.createElement('div');
+      errEl.className = 'script-error';
+      errEl.textContent = '⚠ לא הצלחתי לכתוב תסריט כרגע (' + (rs.message || 'שגיאה') + '). לחצו על "תסריט אחר" לניסיון חוזר.';
+      scriptBodyEl.appendChild(errEl);
+      return;
+    }
+
+    scriptCopyBtn.disabled = false;
+    if(rs.style){
+      const styleObj = REEL_STYLES.find(s=>s.key === rs.style);
+      if(styleObj){
+        const badge = document.createElement('div');
+        badge.className = 'script-style-badge';
+        badge.textContent = 'סגנון: ' + styleObj.label;
+        scriptBodyEl.appendChild(badge);
+      }
+    }
+    function section(label, content, cls){
+      const wrap = document.createElement('div');
+      wrap.className = 'script-section ' + (cls || '');
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = label;
+      const p = document.createElement('div'); p.className = 'script-section-content'; p.textContent = content;
+      wrap.appendChild(h); wrap.appendChild(p);
+      return wrap;
+    }
+    scriptBodyEl.appendChild(section('🪝 הוק — 2-3 השניות הראשונות', rs.hook, 'script-hook'));
+    scriptBodyEl.appendChild(section('🎬 גוף התסריט', rs.body, 'script-body-section'));
+    if(rs.cta){
+      scriptBodyEl.appendChild(section('📣 קריאה לפעולה', rs.cta, 'script-cta'));
+    }
+    if(rs.shots && rs.shots.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'script-section script-shots';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '🎥 הנחיות צילום';
+      wrap.appendChild(h);
+      const ul = document.createElement('ul');
+      rs.shots.forEach(s=>{ const li = document.createElement('li'); li.textContent = s; ul.appendChild(li); });
+      wrap.appendChild(ul);
+      scriptBodyEl.appendChild(wrap);
+    }
+    if(rs.caption){
+      scriptBodyEl.appendChild(section('✍️ כיתוב לפוסט', rs.caption, 'script-caption'));
+    }
+    if(rs.hashtags && rs.hashtags.length){
+      const wrap = document.createElement('div');
+      wrap.className = 'script-section script-hashtags';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '#️⃣ האשטגים מומלצים';
+      wrap.appendChild(h);
+      const tagsDiv = document.createElement('div');
+      tagsDiv.className = 'script-tags';
+      rs.hashtags.forEach(t=>{
+        const span = document.createElement('span');
+        span.className = 'script-tag';
+        span.textContent = t.startsWith('#') ? t : ('#' + t);
+        tagsDiv.appendChild(span);
+      });
+      wrap.appendChild(tagsDiv);
+      scriptBodyEl.appendChild(wrap);
+    }
+    if(rs.referenceVideo && rs.referenceVideo.url){
+      const wrap = document.createElement('div');
+      wrap.className = 'script-section script-reference';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '🔗 השראה: סרטון ויראלי רלוונטי';
+      wrap.appendChild(h);
+      const card = document.createElement('a');
+      card.className = 'script-reference-card';
+      card.href = rs.referenceVideo.url;
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+      const platformSpan = document.createElement('span');
+      platformSpan.className = 'script-reference-platform';
+      platformSpan.textContent = rs.referenceVideo.platform || 'צפייה בסרטון';
+      card.appendChild(platformSpan);
+      if(rs.referenceVideo.engagementNote){
+        const noteSpan = document.createElement('span');
+        noteSpan.className = 'script-reference-note';
+        noteSpan.textContent = rs.referenceVideo.engagementNote;
+        card.appendChild(noteSpan);
+      }
+      wrap.appendChild(card);
+      scriptBodyEl.appendChild(wrap);
+    }
+    if(rs.usedSearch){
+      const note = document.createElement('div');
+      note.className = 'script-search-note';
+      note.textContent = '🔎 נבדק מול מגמות עדכניות ברילים לפני הכתיבה';
+      scriptBodyEl.appendChild(note);
+    }
+  }
+
+  function scriptToPlainText(rs, topicText){
+    let out = topicText + '\n\n';
+    out += 'הוק:\n' + (rs.hook || '') + '\n\n';
+    out += 'גוף התסריט:\n' + (rs.body || '') + '\n\n';
+    if(rs.cta) out += 'קריאה לפעולה:\n' + rs.cta + '\n\n';
+    if(rs.shots && rs.shots.length) out += 'הנחיות צילום:\n' + rs.shots.map(s=>'- '+s).join('\n') + '\n\n';
+    if(rs.caption) out += 'כיתוב לפוסט:\n' + rs.caption + '\n\n';
+    if(rs.hashtags && rs.hashtags.length) out += 'האשטגים:\n' + rs.hashtags.map(t=> t.startsWith('#')?t:('#'+t)).join(' ') + '\n';
+    if(rs.referenceVideo && rs.referenceVideo.url){
+      out += '\nהשראה - סרטון ויראלי רלוונטי:\n' + rs.referenceVideo.url;
+      if(rs.referenceVideo.engagementNote) out += ' (' + rs.referenceVideo.engagementNote + ')';
+      out += '\n';
+    }
+    return out.trim();
+  }
+
+  async function copyTextSmart(text, btnEl){
+    let copied = false;
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    }catch(e){ /* fall through to legacy method */ }
+    if(!copied){
+      try{
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(ta);
+      }catch(e){ /* still failed */ }
+    }
+    const original = btnEl.textContent;
+    btnEl.textContent = copied ? '✓ הועתק!' : 'לא ניתן להעתיק אוטומטית — סמנו ידנית';
+    setTimeout(()=>{ btnEl.textContent = original; }, 2200);
+  }
+
+  scriptCopyBtn.addEventListener('click', ()=>{
+    if(!scriptPanelNodeId) return;
+    const node = state.nodes[scriptPanelNodeId];
+    if(!node || !node.reelScript || node.reelScript.status !== 'ready') return;
+    copyTextSmart(scriptToPlainText(node.reelScript, node.text), scriptCopyBtn);
+  });
+
+  // ---------- Converting bio wizard ----------
+  const BIO_FIELDS = [
+    { key:'name', label:'שם / כינוי מקצועי', hint:'איך תרצו שיקראו לכם בביו', placeholder:'לדוגמה: אור כהן' },
+    { key:'niche', label:'תחום העיסוק', hint:'עד 3 תגיות מופרדות ב-|', placeholder:'לדוגמה: פיננסים | התנהלות כלכלית | השקעות' },
+    { key:'credibility', label:'למה שיאמינו לכם', hint:'ניסיון, כמות לקוחות, הישג מדיד', placeholder:'לדוגמה: בגיל 25 יש לי דירה להשקעה ותיק השקעות של 6 ספרות' },
+    { key:'audience', label:'למי אתם עוזרים ובמה', hint:'קהל היעד והבעיה שאתם פותרים', placeholder:'לדוגמה: עוזר לזוגות וצעירים לייצר ביטחון כלכלי' },
+    { key:'promise', label:'ההבטחה המרכזית', hint:'התוצאה + תנאי או מסגרת זמן קונקרטית', placeholder:'לדוגמה: בלי קשר לגובה המשכורת, תוך 120 יום' },
+    { key:'cta', label:'קריאה לפעולה רצויה', hint:'איך רוצים שיפנו אליכם', placeholder:'לדוגמה: מתחילים פה / שלחו הודעה / לינק בביו' }
+  ];
+
+  function ensureBioObject(){
+    if(!state.bio) state.bio = { status:'form', answers:{}, result:null, message:'' };
+    return state.bio;
+  }
+
+  async function openBioPanel(){
+    if(!state.rootId) return;
+    closeScriptPanel();
+    closeProductPopup();
+    ensureBioObject();
+    bioPanelOpen = true;
+    bioTopicTitle.textContent = state.nodes[state.rootId].text;
+    bioBackdrop.style.display = 'block';
+    bioPanel.style.display = 'flex';
+    requestAnimationFrame(()=> bioPanel.classList.add('open'));
+    renderBioPanel();
+  }
+  function closeBioPanel(){
+    bioPanel.classList.remove('open');
+    bioBackdrop.style.display = 'none';
+    setTimeout(()=>{ if(!bioPanel.classList.contains('open')) bioPanel.style.display = 'none'; }, 320);
+    bioPanelOpen = false;
+  }
+  bioCloseBtn.addEventListener('click', closeBioPanel);
+  bioBackdrop.addEventListener('click', closeBioPanel);
+
+  function renderBioForm(){
+    bioBodyEl.innerHTML = '';
+    const intro = document.createElement('div');
+    intro.className = 'bio-intro';
+    intro.textContent = 'כמה שאלות קצרות, ואבנה לכם ביו ממיר בסגנון שעובד היום באינסטגרם/פייסבוק: כותרת קצרה, שורות אמינות עם אימוג\'ים, והסרת התנגדות עם קריאה לפעולה ברורה.';
+    bioBodyEl.appendChild(intro);
+
+    const answers = state.bio.answers || {};
+    const inputs = {};
+    BIO_FIELDS.forEach(f=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'bio-field';
+      const label = document.createElement('label');
+      label.textContent = f.label;
+      wrap.appendChild(label);
+      const hint = document.createElement('span');
+      hint.className = 'bio-hint';
+      hint.textContent = f.hint;
+      wrap.appendChild(hint);
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = f.placeholder;
+      input.value = answers[f.key] || '';
+      inputs[f.key] = input;
+      wrap.appendChild(input);
+      bioBodyEl.appendChild(wrap);
+    });
+
+    bioFooterEl.innerHTML = '';
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'btn';
+    submitBtn.style.flex = '1 1 auto';
+    submitBtn.textContent = '✍️ כתבו לי ביו';
+    submitBtn.addEventListener('click', ()=>{
+      const collected = {};
+      let hasAny = false;
+      BIO_FIELDS.forEach(f=>{
+        const v = inputs[f.key].value.trim();
+        collected[f.key] = v;
+        if(v) hasAny = true;
+      });
+      if(!hasAny) return;
+      state.bio.answers = collected;
+      generateBio();
+    });
+    bioFooterEl.appendChild(submitBtn);
+  }
+
+  function renderBioResult(){
+    bioBodyEl.innerHTML = '';
+    const rs = state.bio;
+    if(rs.status === 'loading'){
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'script-loading';
+      loadingEl.textContent = '✍️ כותב ביו ממיר לפי התשובות שלכם…';
+      bioBodyEl.appendChild(loadingEl);
+      bioFooterEl.innerHTML = '';
+      return;
+    }
+    if(rs.status === 'error'){
+      const errEl = document.createElement('div');
+      errEl.className = 'script-error';
+      errEl.textContent = '⚠ לא הצלחתי לכתוב ביו כרגע (' + (rs.message || 'שגיאה') + '). אפשר לנסות שוב.';
+      bioBodyEl.appendChild(errEl);
+      bioFooterEl.innerHTML = '';
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn';
+      retryBtn.style.flex = '1 1 auto';
+      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.addEventListener('click', ()=> generateBio());
+      bioFooterEl.appendChild(retryBtn);
+      return;
+    }
+
+    const result = rs.result;
+    const tagline = document.createElement('div');
+    tagline.className = 'bio-result-tagline';
+    tagline.textContent = result.tagline;
+    bioBodyEl.appendChild(tagline);
+
+    (result.bullets || []).forEach(b=>{
+      const line = document.createElement('div');
+      line.className = 'bio-result-bullet';
+      line.textContent = b;
+      bioBodyEl.appendChild(line);
+    });
+
+    const editLink = document.createElement('span');
+    editLink.className = 'bio-edit-link';
+    editLink.textContent = '✏️ לעדכן את התשובות';
+    editLink.addEventListener('click', ()=>{
+      state.bio.status = 'form';
+      renderBioPanel();
+    });
+    bioBodyEl.appendChild(document.createElement('br'));
+    bioBodyEl.appendChild(editLink);
+
+    bioFooterEl.innerHTML = '';
+    const regenBtn = document.createElement('button');
+    regenBtn.type = 'button';
+    regenBtn.className = 'btn ghost';
+    regenBtn.style.flex = '1 1 auto';
+    regenBtn.textContent = '🔄 ביו אחר';
+    regenBtn.addEventListener('click', ()=> generateBio());
+    bioFooterEl.appendChild(regenBtn);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'btn';
+    copyBtn.style.flex = '1 1 auto';
+    copyBtn.textContent = 'העתקת הביו';
+    copyBtn.addEventListener('click', ()=>{
+      const text = bioToPlainText(result);
+      copyTextSmart(text, copyBtn);
+    });
+    bioFooterEl.appendChild(copyBtn);
+  }
+
+  function renderBioPanel(){
+    if(!bioPanelOpen || !state.bio) return;
+    if(state.bio.status === 'form' || !state.bio.status){
+      renderBioForm();
+    } else {
+      renderBioResult();
+    }
+  }
+
+  function bioToPlainText(result){
+    let out = result.tagline + '\n\n';
+    out += (result.bullets || []).join('\n');
+    return out.trim();
+  }
+
+  function parseBioJSON(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONObject(cleaned);
+    if(!match) return null;
+    try{
+      const obj = JSON.parse(match);
+      if(obj && typeof obj.tagline === 'string' && Array.isArray(obj.bullets) && obj.bullets.length > 0){
+        return {
+          tagline: obj.tagline.trim(),
+          bullets: obj.bullets.map(b=>String(b).trim()).filter(Boolean).slice(0,6)
+        };
+      }
+    }catch(e){ /* fall through */ }
+    return null;
+  }
+
+  async function fetchBio(rootText, answers){
+    const system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית.
+מבנה קבוע שאתם חייבים ליישם:
+1. tagline: שורה אחת - שם/כינוי מקצועי, מקף, ואחריו תחום/י עיסוק בפורמט "תחום א | תחום ב | תחום ג" (עד 3 תגיות).
+2. בדיוק 4 שורות bullets, כל שורה מתחילה באימוג'י בודד רלוונטי ומכילה משפט קצר וממיר אחד (עד 12 מילים), בסדר הבא:
+   - שורה 1: אמינות/ניסיון, מבוססת רק על נתון קונקרטי שסופק
+   - שורה 2: למי עוזרים ובאיזו בעיה
+   - שורה 3: הסרת התנגדות עם תנאי או מסגרת זמן קונקרטית
+   - שורה 4: קריאה לפעולה ברורה ומיידית
+טון: בטוח וישיר, מוכר תוצאה ולא הבטחות ריקות. אל תמציאו נתונים - השתמשו רק במה שסופק בתשובות היזם/ית.
+השיבו אך ורק JSON object במבנה: {"tagline": "...", "bullets": ["...", "...", "...", "..."]}`;
+    const user = `נושא הליבה של העסק: ${rootText}
+שם/כינוי: ${answers.name || 'לא צוין'}
+תחום עיסוק: ${answers.niche || 'לא צוין'}
+אמינות/ניסיון: ${answers.credibility || 'לא צוין'}
+קהל יעד ובעיה: ${answers.audience || 'לא צוין'}
+הבטחה מרכזית ותנאי/זמן: ${answers.promise || 'לא צוין'}
+קריאה לפעולה רצויה: ${answers.cta || 'לא צוין'}
+כתבו ביו ממיר אחד לפי כל ההנחיות במערכת. החזירו אך ורק JSON object.`;
+
+    try{
+      const first = await callClaude(system, user, true);
+      const parsed = parseBioJSON(first.text);
+      if(parsed) return parsed;
+    }catch(err){
+      console.warn('Search-assisted bio generation failed, falling back:', err);
+    }
+    const second = await callClaude(system, user, false);
+    const parsed2 = parseBioJSON(second.text);
+    if(!parsed2){
+      throw new Error('לא הצלחתי לפרש את הביו מהמודל');
+    }
+    return parsed2;
+  }
+
+  async function generateBio(){
+    const bio = ensureBioObject();
+    bio.status = 'loading';
+    renderBioPanel();
+    try{
+      const rootText = state.nodes[state.rootId].text;
+      const result = await fetchBio(rootText, bio.answers || {});
+      bio.result = result;
+      bio.status = 'ready';
+    }catch(err){
+      console.error('generateBio failed:', err);
+      bio.status = 'error';
+      bio.message = err && err.message ? err.message : 'שגיאה';
+    } finally {
+      renderBioPanel();
+      refreshViews();
+      persist();
+    }
+  }
+
+  // ---------- Profitable product-offer generator ----------
+  function checkProductOfferThreshold(){
+    const count = state.expandedNodeIds ? Object.keys(state.expandedNodeIds).length : 0;
+    if(count >= 3 && !state.productPopupAutoShown){
+      state.productPopupAutoShown = true;
+      openProductPopup();
+    } else {
+      refreshViews();
+    }
+  }
+
+  function ensureProductObject(){
+    if(!state.productOffer) state.productOffer = { status:'idle', teaser:null, full:null, message:'', productType:null, landingPage:null };
+    return state.productOffer;
+  }
+
+  const PRODUCT_TYPES = [
+    { key:'course', label:'🎓 קורס דיגיטלי', desc:'תוכן מוקלט, נצרך עצמאית, מחיר נמוך-בינוני' },
+    { key:'1on1', label:'🤝 ליווי אישי 1:1', desc:'ליווי צמוד אחד-על-אחד, מחיר גבוה' },
+    { key:'group', label:'👥 ליווי קבוצתי', desc:'ליווי בקבוצה קטנה, מחיר בינוני' }
+  ];
+
+  function collectExpandedTopics(){
+    if(!state.expandedNodeIds) return [];
+    return Object.keys(state.expandedNodeIds)
+      .map(id => state.nodes[id])
+      .filter(Boolean)
+      .map(n => n.text);
+  }
+
+  async function openProductPopup(){
+    closeScriptPanel();
+    closeBioPanel();
+    const po = ensureProductObject();
+    productModalOpen = true;
+    productTopicTitle.textContent = state.nodes[state.rootId] ? state.nodes[state.rootId].text : '';
+    productBackdrop.style.display = 'block';
+    productModal.style.display = 'flex';
+    requestAnimationFrame(()=> productModal.classList.add('open'));
+    if(po.status === 'idle'){
+      po.status = 'type-select';
+    }
+    renderProductPopup();
+  }
+  function closeProductPopup(){
+    productModal.classList.remove('open');
+    productBackdrop.style.display = 'none';
+    setTimeout(()=>{ if(!productModal.classList.contains('open')) productModal.style.display = 'none'; }, 260);
+    productModalOpen = false;
+  }
+  productCloseBtn.addEventListener('click', closeProductPopup);
+  productBackdrop.addEventListener('click', closeProductPopup);
+
+  function parseTeaserJSON(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONObject(cleaned);
+    if(!match) return null;
+    try{
+      const obj = JSON.parse(match);
+      if(obj && typeof obj.name === 'string' && typeof obj.description === 'string'){
+        return {
+          name: obj.name.trim(),
+          description: obj.description.trim(),
+          priceDisplay: obj.priceDisplay ? String(obj.priceDisplay).trim() : '',
+          priceNumeric: Number(obj.priceNumeric) || 0,
+          keyComponents: Array.isArray(obj.keyComponents) ? obj.keyComponents.map(s=>String(s).trim()).filter(Boolean) : []
+        };
+      }
+    }catch(e){ /* fall through */ }
+    return null;
+  }
+
+  async function fetchProductTeaser(rootText, topics, productType){
+    const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
+    const typeLine = typeObj ? `\nחשוב מאוד: המוצר חייב להיות בדיוק ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}) - לא סוג אחר. כל מרכיבי המוצר, המחיר וההיקף צריכים להתאים למודל הזה בפרט: קורס דיגיטלי = תוכן מוקלט/כתוב שנצרך עצמאית בלי זמן אישי מהמוכר, מחיר נמוך-בינוני חד פעמי; ליווי 1:1 = זמן אישי צמוד של המוכר עם הלקוח, מחיר גבוה; ליווי קבוצתי = מפגשים קבוצתיים עם כמה לקוחות יחד, מחיר בינוני.` : '';
+    const system = `אתם יועץ/ת אסטרטגי/ת למוצרים ושירותים דיגיטליים לעסקים קטנים.
+תפקידכם: להציע רעיון קונקרטי ורווחי למוצר או שירות חדש, בהתבסס על נושא הליבה של העסק ועל נושאי התוכן הספציפיים שהיזם/ית בחר/ה להעמיק בהם (זה מסמן עניין אמיתי/כאב אמיתי של הקהל).
+המוצר צריך להיות ממוקד מספיק כדי לפתור בעיה אחת ברורה, ולא "עוד קורס כללי".${typeLine}
+השיבו אך ורק JSON object: {"name": "...", "description": "...", "priceDisplay": "...", "priceNumeric": 000, "keyComponents": ["...", "..."]}
+- name: שם קליט וקצר למוצר/שירות
+- description: 2-3 משפטים על מה זה ולמי זה מיועד
+- priceDisplay: מחיר מוצע בפורמט קריא (למשל "₪497 לחודש" או "₪1,200 חד פעמי")
+- priceNumeric: אותו מחיר כמספר בלבד (בשקלים, בלי סימנים), מספר שלם
+- keyComponents: מערך של 3-5 מרכיבים עיקריים שהמוצר כולל, כל אחד משפט קצר`;
+    const user = `נושא הליבה של העסק: ${rootText}
+נושאי תוכן שהיזם/ית בחר/ה להעמיק בהם (מעידים על עניין/כאב אמיתי): ${topics.join(', ')}
+הציעו רעיון אחד למוצר/שירות רווחי המבוסס על הנושאים האלה. החזירו אך ורק JSON object.`;
+
+    try{
+      const first = await callClaude(system, user, true);
+      const parsed = parseTeaserJSON(first.text);
+      if(parsed) return parsed;
+    }catch(err){
+      console.warn('Search-assisted teaser generation failed, falling back:', err);
+    }
+    const second = await callClaude(system, user, false);
+    const parsed2 = parseTeaserJSON(second.text);
+    if(!parsed2) throw new Error('לא הצלחתי לפרש את רעיון המוצר');
+    return parsed2;
+  }
+
+  async function generateProductTeaser(){
+    const po = ensureProductObject();
+    po.status = 'loading';
+    renderProductPopup();
+    try{
+      const rootText = state.nodes[state.rootId].text;
+      const topics = collectExpandedTopics();
+      po.teaser = await fetchProductTeaser(rootText, topics, po.productType);
+      po.status = 'teaser';
+    }catch(err){
+      console.error('generateProductTeaser failed:', err);
+      po.status = 'error';
+      po.message = err && err.message ? err.message : 'שגיאה';
+    } finally {
+      renderProductPopup();
+      refreshViews();
+      persist();
+    }
+  }
+
+  function parseFullOfferJSON(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONObject(cleaned);
+    if(!match) return null;
+    try{
+      const obj = JSON.parse(match);
+      if(obj && Array.isArray(obj.valueStack) && typeof obj.guarantee === 'string'){
+        return {
+          valueStack: obj.valueStack.map(v=>({
+            item: String(v.item || '').trim(),
+            value: String(v.value || '').trim()
+          })).filter(v=>v.item),
+          totalStackValueDisplay: obj.totalStackValueDisplay ? String(obj.totalStackValueDisplay).trim() : '',
+          guarantee: obj.guarantee.trim(),
+          scarcity: obj.scarcity ? String(obj.scarcity).trim() : '',
+          bonuses: Array.isArray(obj.bonuses) ? obj.bonuses.map(s=>String(s).trim()).filter(Boolean) : [],
+          finalPriceDisplay: obj.finalPriceDisplay ? String(obj.finalPriceDisplay).trim() : '',
+          finalPriceNumeric: Number(obj.finalPriceNumeric) || 0,
+          justification: obj.justification ? String(obj.justification).trim() : ''
+        };
+      }
+    }catch(e){ /* fall through */ }
+    return null;
+  }
+
+  async function fetchFullOffer(rootText, teaser, productType){
+    const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
+    const typeLine = typeObj ? `\nחשוב: המוצר חייב להיבנות כ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}). התאימו את מרכיבי ה-value stack, את המחיר הסופי, ואת אופי ההבטחה/דחיפות למודל הזה בפרט - קורס דיגיטלי נצרך עצמאית ומחירו נמוך-בינוני; ליווי 1:1 הוא זמן אישי צמוד ומחירו גבוה משמעותית; ליווי קבוצתי הוא באמצע, עם תחושת קהילה.` : '';
+    const system = `אתם מומחה/ית לבניית הצעות מכר (offers) בלתי ניתנות לסירוב, לפי עקרונות "הצעה שאי אפשר לסרב לה" (value stacking, הבטחת תוצאה, הסרת סיכון, דחיפות אמיתית - לא מזויפת).
+קיבלתם רעיון בסיסי למוצר/שירות. תפקידכם להרחיב אותו להצעה מלאה ומשכנעת:
+1. valueStack: פרקו את המוצר למרכיבים נפרדים (למשל: הליווי עצמו, תבניות/כלים, קבוצת תמיכה, בונוסים) וצרפו לכל מרכיב "שווי" מוערך בש"ח כאילו נמכר בנפרד - כך שסך השווי המצטבר יהיה גבוה משמעותית מהמחיר הסופי.
+2. guarantee: הבטחה/ערבות קונקרטית שמסירה סיכון מהלקוח (למשל החזר כספי מלא בתנאי מדיד).
+3. scarcity: מנגנון דחיפות אמיתי והוגן (כמות מקומות מוגבלת, מחיר עולה בקבוצה הבאה וכו') - לא לחץ מזויף.
+4. bonuses: 2-3 בונוסים קונקרטיים שמחזקים את התחושה של "יותר מדי ערך במחיר הזה".
+5. finalPriceDisplay/finalPriceNumeric: המחיר הסופי המוצע (יכול להיות דומה למחיר המקורי או מותאם), עם justification קצר שמסביר למה זה שווה הרבה יותר ממה שהלקוח משלם.${typeLine}
+השיבו אך ורק JSON object: {"valueStack": [{"item":"...", "value":"..."}], "totalStackValueDisplay": "...", "guarantee": "...", "scarcity": "...", "bonuses": ["...", "..."], "finalPriceDisplay": "...", "finalPriceNumeric": 000, "justification": "..."}`;
+    const user = `שם המוצר: ${teaser.name}
+תיאור: ${teaser.description}
+מחיר מוצע מקורי: ${teaser.priceDisplay}
+מרכיבים עיקריים שכבר הוגדרו: ${teaser.keyComponents.join(', ')}
+נושא הליבה של העסק: ${rootText}
+בנו הצעה מלאה ובלתי ניתנת לסירוב סביב המוצר הזה. החזירו אך ורק JSON object.`;
+
+    try{
+      const first = await callClaude(system, user, true);
+      const parsed = parseFullOfferJSON(first.text);
+      if(parsed) return parsed;
+    }catch(err){
+      console.warn('Search-assisted full-offer generation failed, falling back:', err);
+    }
+    const second = await callClaude(system, user, false);
+    const parsed2 = parseFullOfferJSON(second.text);
+    if(!parsed2) throw new Error('לא הצלחתי לבנות את ההצעה המלאה');
+    return parsed2;
+  }
+
+  async function generateFullOffer(){
+    const po = ensureProductObject();
+    if(!po.teaser || !po.productType) return;
+    po.status = 'loading-full';
+    renderProductPopup();
+    try{
+      const rootText = state.nodes[state.rootId].text;
+      po.full = await fetchFullOffer(rootText, po.teaser, po.productType);
+      po.status = 'full';
+    }catch(err){
+      console.error('generateFullOffer failed:', err);
+      po.status = 'error';
+      po.message = err && err.message ? err.message : 'שגיאה';
+    } finally {
+      renderProductPopup();
+      persist();
+    }
+  }
+
+  function calcAndRenderCalculator(defaultPrice){
+    const box = document.createElement('div');
+    box.className = 'calc-box';
+    const title = document.createElement('div');
+    title.className = 'calc-title';
+    title.textContent = '🧮 כמה צריך למכור כדי להרוויח את זה בחודש?';
+    box.appendChild(title);
+
+    const row = document.createElement('div');
+    row.className = 'calc-row';
+
+    const incomeField = document.createElement('div');
+    incomeField.className = 'calc-field';
+    const incomeLabel = document.createElement('label');
+    incomeLabel.textContent = 'כמה תרצה/י להרוויח בחודש (₪)';
+    const incomeInput = document.createElement('input');
+    incomeInput.type = 'number';
+    incomeInput.min = '0';
+    incomeInput.value = '10000';
+    incomeField.appendChild(incomeLabel);
+    incomeField.appendChild(incomeInput);
+
+    const priceField = document.createElement('div');
+    priceField.className = 'calc-field';
+    const priceLabel = document.createElement('label');
+    priceLabel.textContent = 'מחיר ליחידה/ללקוח (₪)';
+    const priceInput = document.createElement('input');
+    priceInput.type = 'number';
+    priceInput.min = '1';
+    priceInput.value = String(defaultPrice || 500);
+    priceField.appendChild(priceLabel);
+    priceField.appendChild(priceInput);
+
+    row.appendChild(incomeField);
+    row.appendChild(priceField);
+    box.appendChild(row);
+
+    const result = document.createElement('div');
+    result.className = 'calc-result';
+    box.appendChild(result);
+
+    function recompute(){
+      const income = Math.max(0, Number(incomeInput.value) || 0);
+      const price = Math.max(1, Number(priceInput.value) || 1);
+      const units = Math.ceil(income / price);
+      const perWeek = (units / 4.33);
+      const perDay = (units / 30);
+      result.innerHTML = '';
+      const line1 = document.createElement('div');
+      line1.innerHTML = `כדי להרוויח <b>₪${income.toLocaleString()}</b> בחודש במחיר של ₪${price.toLocaleString()} ליחידה, צריך למכור <b>${units.toLocaleString()}</b> יחידות בחודש`;
+      const line2 = document.createElement('div');
+      line2.style.marginTop = '6px';
+      line2.style.fontSize = '12.5px';
+      line2.style.color = 'var(--ink-soft)';
+      line2.textContent = `בערך ${perWeek.toFixed(1)} בשבוע, או ${perDay.toFixed(2)} ליום`;
+      result.appendChild(line1);
+      result.appendChild(line2);
+    }
+    incomeInput.addEventListener('input', recompute);
+    priceInput.addEventListener('input', recompute);
+    recompute();
+
+    return box;
+  }
+
+  function renderProductPopup(){
+    if(!productModalOpen || !state.productOffer) return;
+    const po = state.productOffer;
+    productBodyEl.innerHTML = '';
+
+    if(po.status === 'type-select'){
+      const intro = document.createElement('div');
+      intro.className = 'bio-intro';
+      intro.textContent = 'קודם כל - איזה סוג מוצר/שירות תרצו לבנות? נתאים את כל הרעיון למודל הזה מההתחלה.';
+      productBodyEl.appendChild(intro);
+
+      const typeRow = document.createElement('div');
+      typeRow.className = 'product-type-row';
+      PRODUCT_TYPES.forEach(t=>{
+        const pill = document.createElement('button');
+        pill.type = 'button';
+        pill.className = 'product-type-pill';
+        const title = document.createElement('span');
+        title.className = 'pt-title';
+        title.textContent = t.label;
+        const desc = document.createElement('span');
+        desc.className = 'pt-desc';
+        desc.textContent = t.desc;
+        pill.appendChild(title);
+        pill.appendChild(desc);
+        pill.addEventListener('click', ()=>{
+          po.productType = t.key;
+          generateProductTeaser();
+        });
+        typeRow.appendChild(pill);
+      });
+      productBodyEl.appendChild(typeRow);
+      return;
+    }
+
+    if(po.status === 'idle' || po.status === 'loading'){
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'script-loading';
+      loadingEl.textContent = '💡 חושב על רעיון למוצר רווחי לפי הנושאים שבחרת להעמיק...';
+      productBodyEl.appendChild(loadingEl);
+      return;
+    }
+    if(po.status === 'error'){
+      const errEl = document.createElement('div');
+      errEl.className = 'script-error';
+      errEl.textContent = '⚠ לא הצלחתי לבנות רעיון כרגע (' + (po.message || 'שגיאה') + ').';
+      productBodyEl.appendChild(errEl);
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn';
+      retryBtn.style.marginTop = '14px';
+      retryBtn.style.width = '100%';
+      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.addEventListener('click', ()=> po.productType ? generateProductTeaser() : (po.status='type-select', renderProductPopup()));
+      productBodyEl.appendChild(retryBtn);
+      return;
+    }
+
+    const teaser = po.teaser;
+    if(!teaser) return;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'product-name';
+    nameEl.textContent = teaser.name;
+    productBodyEl.appendChild(nameEl);
+
+    const descEl = document.createElement('div');
+    descEl.className = 'product-desc';
+    descEl.textContent = teaser.description;
+    productBodyEl.appendChild(descEl);
+
+    if(po.status !== 'full' && po.status !== 'loading-full'){
+      const priceEl = document.createElement('div');
+      priceEl.className = 'product-price';
+      priceEl.textContent = teaser.priceDisplay;
+      productBodyEl.appendChild(priceEl);
+    }
+
+    if(teaser.keyComponents && teaser.keyComponents.length){
+      const label = document.createElement('div');
+      label.className = 'product-section-label';
+      label.textContent = 'מה כולל המוצר';
+      productBodyEl.appendChild(label);
+      const wrap = document.createElement('div');
+      wrap.className = 'product-components';
+      const ul = document.createElement('ul');
+      teaser.keyComponents.forEach(c=>{ const li = document.createElement('li'); li.textContent = c; ul.appendChild(li); });
+      wrap.appendChild(ul);
+      productBodyEl.appendChild(wrap);
+    }
+
+    if(po.status === 'loading-full'){
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'script-loading';
+      loadingEl.textContent = '🚀 בונה הצעה בלתי ניתנת לסירוב...';
+      productBodyEl.appendChild(loadingEl);
+      return;
+    }
+
+    if(po.status === 'full' && po.full){
+      const full = po.full;
+      const label = document.createElement('div');
+      label.className = 'product-section-label';
+      label.textContent = '📦 מה שאתם מקבלים (ערך מלא)';
+      productBodyEl.appendChild(label);
+      full.valueStack.forEach(v=>{
+        const item = document.createElement('div');
+        item.className = 'value-stack-item';
+        const name = document.createElement('span');
+        name.textContent = v.item;
+        const val = document.createElement('span');
+        val.className = 'vs-value';
+        val.textContent = v.value;
+        item.appendChild(name); item.appendChild(val);
+        productBodyEl.appendChild(item);
+      });
+      if(full.totalStackValueDisplay){
+        const totalEl = document.createElement('div');
+        totalEl.className = 'value-stack-total';
+        const t1 = document.createElement('span'); t1.textContent = 'שווי כולל';
+        const t2 = document.createElement('span'); t2.textContent = full.totalStackValueDisplay;
+        totalEl.appendChild(t1); totalEl.appendChild(t2);
+        productBodyEl.appendChild(totalEl);
+      }
+      if(full.bonuses && full.bonuses.length){
+        const bl = document.createElement('div');
+        bl.className = 'product-section-label';
+        bl.textContent = '🎁 בונוסים';
+        productBodyEl.appendChild(bl);
+        const wrap = document.createElement('div');
+        wrap.className = 'product-components';
+        const ul = document.createElement('ul');
+        full.bonuses.forEach(b=>{ const li = document.createElement('li'); li.textContent = b; ul.appendChild(li); });
+        wrap.appendChild(ul);
+        productBodyEl.appendChild(wrap);
+      }
+      const gl = document.createElement('div');
+      gl.className = 'product-section-label';
+      gl.textContent = '🛡️ הבטחה';
+      productBodyEl.appendChild(gl);
+      const guaranteeEl = document.createElement('div');
+      guaranteeEl.className = 'product-guarantee';
+      guaranteeEl.textContent = full.guarantee;
+      productBodyEl.appendChild(guaranteeEl);
+
+      if(full.scarcity){
+        const sl = document.createElement('div');
+        sl.className = 'product-section-label';
+        sl.textContent = '⏳ דחיפות';
+        productBodyEl.appendChild(sl);
+        const scarcityEl = document.createElement('div');
+        scarcityEl.className = 'product-scarcity';
+        scarcityEl.textContent = full.scarcity;
+        productBodyEl.appendChild(scarcityEl);
+      }
+
+      const finalWrap = document.createElement('div');
+      finalWrap.className = 'product-final-price';
+      if(full.totalStackValueDisplay){
+        const oldP = document.createElement('span');
+        oldP.className = 'pf-old';
+        oldP.textContent = 'שווי כולל: ' + full.totalStackValueDisplay;
+        finalWrap.appendChild(oldP);
+      }
+      const newP = document.createElement('span');
+      newP.className = 'pf-new';
+      newP.textContent = full.finalPriceDisplay || teaser.priceDisplay;
+      finalWrap.appendChild(newP);
+      if(full.justification){
+        const justEl = document.createElement('div');
+        justEl.style.fontSize = '12px';
+        justEl.style.color = '#6b4a26';
+        justEl.style.marginTop = '4px';
+        justEl.textContent = full.justification;
+        finalWrap.appendChild(justEl);
+      }
+      productBodyEl.appendChild(finalWrap);
+
+      const landingBtn = document.createElement('button');
+      landingBtn.type = 'button';
+      landingBtn.className = 'product-build-btn';
+      landingBtn.textContent = '🖥️ בנה דף נחיתה';
+      landingBtn.addEventListener('click', ()=> openLandingModal());
+      productBodyEl.appendChild(landingBtn);
+
+      const regenFull = document.createElement('span');
+      regenFull.className = 'product-regen-link';
+      regenFull.textContent = '🔄 לבנות הצעה אחרת';
+      regenFull.addEventListener('click', ()=> generateFullOffer());
+      productBodyEl.appendChild(regenFull);
+
+      const calcPrice = full.finalPriceNumeric || teaser.priceNumeric || 500;
+      productBodyEl.appendChild(calcAndRenderCalculator(calcPrice));
+    } else {
+      const typeObj = PRODUCT_TYPES.find(t=>t.key === po.productType);
+      if(typeObj){
+        const typeBadge = document.createElement('div');
+        typeBadge.className = 'script-style-badge';
+        typeBadge.textContent = 'סוג: ' + typeObj.label;
+        productBodyEl.appendChild(typeBadge);
+      }
+
+      const buildBtn = document.createElement('button');
+      buildBtn.type = 'button';
+      buildBtn.className = 'product-build-btn';
+      buildBtn.textContent = '🚀 בנה הצעה שאי אפשר לסרב לה';
+      buildBtn.addEventListener('click', ()=> generateFullOffer());
+      productBodyEl.appendChild(buildBtn);
+
+      const regenTeaser = document.createElement('span');
+      regenTeaser.className = 'product-regen-link';
+      regenTeaser.textContent = '🔄 רעיון אחר למוצר';
+      regenTeaser.addEventListener('click', ()=> generateProductTeaser());
+      productBodyEl.appendChild(regenTeaser);
+
+      productBodyEl.appendChild(calcAndRenderCalculator(teaser.priceNumeric || 500));
+    }
+  }
+
+  // ---------- Landing page builder ----------
+  function ensureLandingObject(){
+    const po = ensureProductObject();
+    if(!po.landingPage){
+      po.landingPage = {
+        status: 'form',
+        intake: { assetLinks:'', personalPhotoDataUrl:null, personalPhotoName:'', testimonialsText:'', testimonialImages:[] },
+        content: null,
+        html: null,
+        message: ''
+      };
+    }
+    return po.landingPage;
+  }
+
+  function fileToDataURL(file){
+    return new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = ()=> reject(new Error('קריאת הקובץ נכשלה'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function openLandingModal(){
+    closeProductPopup();
+    const lp = ensureLandingObject();
+    landingModalOpen = true;
+    landingTopicTitle.textContent = state.nodes[state.rootId] ? state.nodes[state.rootId].text : '';
+    landingBackdrop.style.display = 'block';
+    landingModal.style.display = 'flex';
+    requestAnimationFrame(()=> landingModal.classList.add('open'));
+    renderLandingModal();
+  }
+  function closeLandingModal(){
+    landingModal.classList.remove('open');
+    landingBackdrop.style.display = 'none';
+    setTimeout(()=>{ if(!landingModal.classList.contains('open')) landingModal.style.display = 'none'; }, 260);
+    landingModalOpen = false;
+  }
+  landingCloseBtn.addEventListener('click', closeLandingModal);
+  landingBackdrop.addEventListener('click', closeLandingModal);
+
+  function renderLandingModal(){
+    if(!landingModalOpen) return;
+    const po = state.productOffer;
+    if(!po || !po.landingPage) return;
+    const lp = po.landingPage;
+    landingBodyEl.innerHTML = '';
+
+    if(lp.status === 'form'){
+      renderLandingIntakeForm(lp);
+    } else if(lp.status === 'loading'){
+      const loadingEl = document.createElement('div');
+      loadingEl.className = 'script-loading';
+      loadingEl.textContent = '🖥️ בונה דף נחיתה לפי מה שסיפרת, ובודק עקרונות שכנוע שעובדים היום...';
+      landingBodyEl.appendChild(loadingEl);
+    } else if(lp.status === 'error'){
+      const errEl = document.createElement('div');
+      errEl.className = 'script-error';
+      errEl.textContent = '⚠ לא הצלחתי לבנות את הדף כרגע (' + (lp.message || 'שגיאה') + ').';
+      landingBodyEl.appendChild(errEl);
+      const retryBtn = document.createElement('button');
+      retryBtn.type = 'button';
+      retryBtn.className = 'btn';
+      retryBtn.style.marginTop = '14px';
+      retryBtn.style.width = '100%';
+      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.addEventListener('click', ()=> generateLandingPage());
+      landingBodyEl.appendChild(retryBtn);
+    } else if(lp.status === 'ready'){
+      renderLandingPreview(lp);
+    }
+  }
+
+  function renderLandingIntakeForm(lp){
+    const intro = document.createElement('div');
+    intro.className = 'bio-intro';
+    intro.textContent = 'כמה פרטים לפני שבונים - ככל שתשתפו יותר, הדף יהיה מדויק ומשכנע יותר עבור הקהל שלכם.';
+    landingBodyEl.appendChild(intro);
+
+    const linksField = document.createElement('div');
+    linksField.className = 'intake-field';
+    const linksLabel = document.createElement('label');
+    linksLabel.textContent = 'קישורים לנכסים דיגיטליים קיימים (אופציונלי)';
+    const linksHint = document.createElement('span');
+    linksHint.className = 'intake-hint';
+    linksHint.textContent = 'אתר, עמוד אינסטגרם, קורס קיים וכו׳ - שורה לכל קישור';
+    const linksInput = document.createElement('textarea');
+    linksInput.value = lp.intake.assetLinks || '';
+    linksField.appendChild(linksLabel);
+    linksField.appendChild(linksHint);
+    linksField.appendChild(linksInput);
+    landingBodyEl.appendChild(linksField);
+
+    const photoField = document.createElement('div');
+    photoField.className = 'intake-field';
+    const photoLabel = document.createElement('label');
+    photoLabel.textContent = 'תמונה אישית (אופציונלי)';
+    const photoHint = document.createElement('span');
+    photoHint.className = 'intake-hint';
+    photoHint.textContent = 'תופיע בדף הנחיתה כדי ליצור אמון וחיבור אישי';
+    photoField.appendChild(photoLabel);
+    photoField.appendChild(photoHint);
+    const photoRow = document.createElement('div');
+    photoRow.className = 'intake-file-row';
+    if(lp.intake.personalPhotoDataUrl){
+      const thumb = document.createElement('img');
+      thumb.className = 'intake-preview-thumb';
+      thumb.src = lp.intake.personalPhotoDataUrl;
+      photoRow.appendChild(thumb);
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'intake-file-name';
+      nameSpan.textContent = lp.intake.personalPhotoName || '';
+      photoRow.appendChild(nameSpan);
+    }
+    const photoBtn = document.createElement('button');
+    photoBtn.type = 'button';
+    photoBtn.className = 'intake-file-btn';
+    photoBtn.textContent = lp.intake.personalPhotoDataUrl ? '🔄 החלפת תמונה' : '📷 העלאת תמונה';
+    const photoInput = document.createElement('input');
+    photoInput.type = 'file';
+    photoInput.accept = 'image/*';
+    photoInput.style.display = 'none';
+    photoBtn.addEventListener('click', ()=> photoInput.click());
+    photoInput.addEventListener('change', async ()=>{
+      if(photoInput.files && photoInput.files[0]){
+        try{
+          const dataUrl = await fileToDataURL(photoInput.files[0]);
+          lp.intake.personalPhotoDataUrl = dataUrl;
+          lp.intake.personalPhotoName = photoInput.files[0].name;
+          renderLandingModal();
+          persist();
+        }catch(e){ showError('לא הצלחתי לטעון את התמונה'); }
+      }
+    });
+    photoRow.appendChild(photoBtn);
+    photoRow.appendChild(photoInput);
+    photoField.appendChild(photoRow);
+    landingBodyEl.appendChild(photoField);
+
+    const testiTextField = document.createElement('div');
+    testiTextField.className = 'intake-field';
+    const testiLabel = document.createElement('label');
+    testiLabel.textContent = 'עדויות קיימות (אופציונלי)';
+    const testiHint = document.createElement('span');
+    testiHint.className = 'intake-hint';
+    testiHint.textContent = 'הדביקו כאן ציטוטים או תיאורים של לקוחות מרוצים, כל עדות בשורה נפרדת';
+    const testiInput = document.createElement('textarea');
+    testiInput.value = lp.intake.testimonialsText || '';
+    testiTextField.appendChild(testiLabel);
+    testiTextField.appendChild(testiHint);
+    testiTextField.appendChild(testiInput);
+    landingBodyEl.appendChild(testiTextField);
+
+    const testiImgField = document.createElement('div');
+    testiImgField.className = 'intake-field';
+    const testiImgLabel = document.createElement('label');
+    testiImgLabel.textContent = 'צילומי מסך של עדויות (אופציונלי)';
+    const testiImgHint = document.createElement('span');
+    testiImgHint.className = 'intake-hint';
+    testiImgHint.textContent = 'אפשר להעלות כמה תמונות - נקרא מהן את הטקסט ונשלב בדף';
+    testiImgField.appendChild(testiImgLabel);
+    testiImgField.appendChild(testiImgHint);
+    const testiImgRow = document.createElement('div');
+    testiImgRow.className = 'intake-file-row';
+    lp.intake.testimonialImages.forEach((img, idx)=>{
+      const thumb = document.createElement('img');
+      thumb.className = 'intake-preview-thumb';
+      thumb.src = img.dataUrl;
+      thumb.title = img.name;
+      testiImgRow.appendChild(thumb);
+    });
+    const testiImgBtn = document.createElement('button');
+    testiImgBtn.type = 'button';
+    testiImgBtn.className = 'intake-file-btn';
+    testiImgBtn.textContent = '🖼️ הוספת תמונות עדויות';
+    const testiImgInput = document.createElement('input');
+    testiImgInput.type = 'file';
+    testiImgInput.accept = 'image/*';
+    testiImgInput.multiple = true;
+    testiImgInput.style.display = 'none';
+    testiImgBtn.addEventListener('click', ()=> testiImgInput.click());
+    testiImgInput.addEventListener('change', async ()=>{
+      if(testiImgInput.files && testiImgInput.files.length){
+        try{
+          const files = Array.from(testiImgInput.files).slice(0, 5);
+          for(const f of files){
+            const dataUrl = await fileToDataURL(f);
+            lp.intake.testimonialImages.push({ dataUrl, name: f.name });
+          }
+          renderLandingModal();
+          persist();
+        }catch(e){ showError('לא הצלחתי לטעון את התמונות'); }
+      }
+    });
+    testiImgRow.appendChild(testiImgBtn);
+    testiImgRow.appendChild(testiImgInput);
+    testiImgField.appendChild(testiImgRow);
+    landingBodyEl.appendChild(testiImgField);
+
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'button';
+    submitBtn.className = 'product-build-btn';
+    submitBtn.textContent = '✨ בנה לי דף נחיתה';
+    submitBtn.addEventListener('click', ()=>{
+      lp.intake.assetLinks = linksInput.value.trim();
+      lp.intake.testimonialsText = testiInput.value.trim();
+      generateLandingPage();
+    });
+    landingBodyEl.appendChild(submitBtn);
+  }
+
+  function parseLandingContentJSON(text){
+    const cleaned = text.replace(/```json/g,'').replace(/```/g,'').trim();
+    const match = extractJSONObject(cleaned);
+    if(!match) return null;
+    try{
+      const obj = JSON.parse(match);
+      if(obj && typeof obj.headline === 'string'){
+        return {
+          headline: obj.headline.trim(),
+          subheadline: obj.subheadline ? String(obj.subheadline).trim() : '',
+          painPoints: Array.isArray(obj.painPoints) ? obj.painPoints.map(s=>String(s).trim()).filter(Boolean) : [],
+          solutionIntro: obj.solutionIntro ? String(obj.solutionIntro).trim() : '',
+          testimonials: Array.isArray(obj.testimonials) ? obj.testimonials.map(s=>String(s).trim()).filter(Boolean) : [],
+          faq: Array.isArray(obj.faq) ? obj.faq.map(f=>({ q:String(f.q||'').trim(), a:String(f.a||'').trim() })).filter(f=>f.q) : [],
+          finalCtaHeadline: obj.finalCtaHeadline ? String(obj.finalCtaHeadline).trim() : '',
+          finalCtaSubtext: obj.finalCtaSubtext ? String(obj.finalCtaSubtext).trim() : ''
+        };
+      }
+    }catch(e){ /* fall through */ }
+    return null;
+  }
+
+  async function fetchLandingContent(rootText, teaser, full, productType, intake){
+    const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
+    const system = `אתם קופירייטר/ית מומחה/ית לדפי נחיתה ומכירה (landing pages) בעברית, שמכיר/ה לעומק את עקרונות השכנוע שעובדים היום: מבנה PAS (Problem-Agitate-Solve), הוכחה חברתית, הסרת סיכון, ותהליך קריאה שמוביל טבעי לפעולה אחת.
+כתבו תוכן לדף נחיתה שממיר, בהתבסס על ההצעה שכבר נבנתה. אם צורפו תמונות עם עדויות לקוחות - קראו מהן את הטקסט (בפרפרזה, במילים שלכם) ושלבו אותן במערך testimonials יחד עם העדויות הכתובות שסופקו.
+השיבו אך ורק JSON object: {"headline":"...", "subheadline":"...", "painPoints":["...","...","..."], "solutionIntro":"...", "testimonials":["...","..."], "faq":[{"q":"...","a":"..."}], "finalCtaHeadline":"...", "finalCtaSubtext":"..."}
+- headline: כותרת ראשית חזקה שמדברת ישירות לתוצאה הרצויה של הקהל (עד 12 מילים)
+- subheadline: משפט הבהרה שמחזק את ההבטחה (עד 20 מילים)
+- painPoints: 3 כאבים/תסכולים קונקרטיים שהקהל מרגיש היום, מנוסחים מהזווית שלהם (גוף ראשון)
+- solutionIntro: פסקה קצרה שמציגה את המוצר כפתרון הטבעי לכאבים האלה
+- testimonials: 2-4 עדויות קצרות (כתובות + שחולצו מתמונות אם יש), בגוף ראשון, כל אחת עד 3 משפטים
+- faq: 3-4 שאלות נפוצות עם תשובות קצרות שמסירות התנגדויות רכישה נפוצות
+- finalCtaHeadline: כותרת סגירה נחרצת לקריאה לפעולה האחרונה
+- finalCtaSubtext: משפט תמיכה קצר מתחתיה`;
+    const linksLine = intake.assetLinks ? `\nקישורים לנכסים דיגיטליים קיימים של היזם/ית: ${intake.assetLinks}` : '';
+    const testimonialsLine = intake.testimonialsText ? `\nעדויות כתובות שסופקו: ${intake.testimonialsText}` : '';
+    const typeLine = typeObj ? `\nסוג המוצר: ${typeObj.label} (${typeObj.desc})` : '';
+    const userText = `נושא הליבה של העסק: ${rootText}
+שם המוצר: ${teaser.name}
+תיאור המוצר: ${teaser.description}${typeLine}
+מרכיבי ההצעה: ${full.valueStack.map(v=>v.item).join(', ')}
+הבטחה/ערבות: ${full.guarantee}
+מחיר סופי: ${full.finalPriceDisplay}${linksLine}${testimonialsLine}
+כתבו תוכן מלא לדף נחיתה לפי כל ההנחיות במערכת. אם צורפו תמונות עדויות - קראו מהן טקסט ושלבו. החזירו אך ורק JSON object.`;
+
+    let userContent = userText;
+    if(intake.testimonialImages && intake.testimonialImages.length){
+      const blocks = [];
+      intake.testimonialImages.forEach(img=>{
+        const m = img.dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+        if(m){
+          blocks.push({ type:'image', source:{ type:'base64', media_type:m[1], data:m[2] } });
+        }
+      });
+      blocks.push({ type:'text', text: userText });
+      userContent = blocks;
+    }
+
+    try{
+      const first = await callClaude(system, userContent, true);
+      const parsed = parseLandingContentJSON(first.text);
+      if(parsed) return parsed;
+    }catch(err){
+      console.warn('Search-assisted landing content failed, falling back:', err);
+    }
+    const second = await callClaude(system, userContent, false);
+    const parsed2 = parseLandingContentJSON(second.text);
+    if(!parsed2) throw new Error('לא הצלחתי לפרש את תוכן הדף');
+    return parsed2;
+  }
+
+  function escapeHTML(str){
+    return String(str || '')
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function buildLandingHTML(content, intake, teaser, full, productType){
+    const isService = productType === '1on1' || productType === 'group';
+    const photoBlock = intake.personalPhotoDataUrl
+      ? `<img src="${intake.personalPhotoDataUrl}" alt="תמונה אישית" class="lp-photo"/>`
+      : '';
+    const painItems = content.painPoints.map(p=>`<li>${escapeHTML(p)}</li>`).join('');
+    const valueItems = full.valueStack.map(v=>`<div class="lp-value-item"><span>${escapeHTML(v.item)}</span><span class="lp-value-amt">${escapeHTML(v.value)}</span></div>`).join('');
+    const bonusItems = (full.bonuses||[]).map(b=>`<li>${escapeHTML(b)}</li>`).join('');
+    const testimonialItems = content.testimonials.map(t=>`<div class="lp-testimonial">"${escapeHTML(t)}"</div>`).join('');
+    const faqItems = content.faq.map(f=>`<details class="lp-faq-item"><summary>${escapeHTML(f.q)}</summary><p>${escapeHTML(f.a)}</p></details>`).join('');
+
+    const priceOrLeadBlock = isService ? `
+      <div class="lp-lead-form">
+        <div class="lp-lead-title">משאירים פרטים ונחזור אליכם עם כל הפרטים</div>
+        <input type="text" placeholder="שם מלא" class="lp-input"/>
+        <input type="tel" placeholder="טלפון" class="lp-input"/>
+        <input type="email" placeholder="אימייל" class="lp-input"/>
+        <button type="button" class="lp-btn-primary">שליחת פרטים</button>
+      </div>` : `
+      <div class="lp-price-block">
+        ${full.totalStackValueDisplay ? `<div class="lp-price-old">שווי כולל: ${escapeHTML(full.totalStackValueDisplay)}</div>` : ''}
+        <div class="lp-price-new">${escapeHTML(full.finalPriceDisplay || teaser.priceDisplay)}</div>
+        <button type="button" class="lp-btn-primary">🛒 לרכישה מיידית</button>
+      </div>`;
+
+    return `<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Assistant',sans-serif;background:#FBF8F3;color:#1B2430;line-height:1.6;}
+  .lp-hero{background:#1B2430;color:#fff;padding:70px 24px;text-align:center;}
+  .lp-hero h1{font-family:'Rubik',sans-serif;font-size:36px;max-width:760px;margin:0 auto 16px;}
+  .lp-hero p{font-size:18px;color:#c9d0da;max-width:600px;margin:0 auto 28px;}
+  .lp-photo{width:120px;height:120px;border-radius:50%;object-fit:cover;border:4px solid #E8562F;margin-bottom:20px;}
+  .lp-btn-primary{background:#E8562F;color:#fff;border:none;border-radius:12px;padding:16px 34px;font-size:17px;font-weight:700;cursor:pointer;font-family:'Rubik',sans-serif;}
+  section{padding:56px 24px;max-width:760px;margin:0 auto;}
+  h2{font-family:'Rubik',sans-serif;font-size:26px;text-align:center;margin-bottom:28px;}
+  .lp-pain ul{list-style:none;padding:0;margin:0;}
+  .lp-pain li{background:#fff;border-right:4px solid #E8562F;border-radius:10px;padding:14px 18px;margin-bottom:12px;font-size:16px;}
+  .lp-solution{background:#fff;border-radius:16px;padding:28px;font-size:16px;text-align:center;}
+  .lp-value-item{display:flex;justify-content:space-between;background:#fff;border:1px solid #e5e0d5;border-radius:10px;padding:12px 16px;margin-bottom:8px;}
+  .lp-value-amt{color:#6b6b6b;}
+  .lp-bonuses ul{padding-right:20px;}
+  .lp-testimonial{background:#fff;border-radius:12px;padding:18px;margin-bottom:14px;font-style:italic;box-shadow:0 2px 10px rgba(0,0,0,0.05);}
+  .lp-price-block, .lp-lead-form{background:#fff;border:2px solid #E8562F;border-radius:16px;padding:28px;text-align:center;max-width:420px;margin:0 auto;}
+  .lp-price-old{text-decoration:line-through;color:#999;font-size:14px;}
+  .lp-price-new{font-family:'Rubik',sans-serif;font-size:30px;font-weight:700;margin:8px 0 16px;}
+  .lp-lead-title{font-weight:700;margin-bottom:14px;}
+  .lp-input{width:100%;padding:12px;margin-bottom:10px;border-radius:10px;border:1.5px solid #ddd;font-family:'Assistant',sans-serif;font-size:15px;}
+  .lp-faq-item{background:#fff;border-radius:10px;padding:14px 18px;margin-bottom:10px;cursor:pointer;}
+  .lp-faq-item summary{font-weight:700;}
+  .lp-final{background:#1B2430;color:#fff;text-align:center;padding:60px 24px;}
+  .lp-final h2{color:#fff;}
+  .lp-final p{color:#c9d0da;margin-bottom:24px;}
+  .lp-guarantee{background:#EAF6EF;border-right:4px solid #1E6E4C;border-radius:10px;padding:16px 20px;font-size:15px;margin-top:20px;}
+</style></head>
+<body>
+  <div class="lp-hero">
+    ${photoBlock}
+    <h1>${escapeHTML(content.headline)}</h1>
+    <p>${escapeHTML(content.subheadline)}</p>
+  </div>
+  <section class="lp-pain">
+    <h2>מוכר לכם?</h2>
+    <ul>${painItems}</ul>
+  </section>
+  <section class="lp-solution-section">
+    <h2>${escapeHTML(teaser.name)}</h2>
+    <div class="lp-solution">${escapeHTML(content.solutionIntro)}</div>
+  </section>
+  <section class="lp-value">
+    <h2>מה מקבלים</h2>
+    ${valueItems}
+    ${bonusItems ? `<h2 style="margin-top:28px;">בונוסים</h2><ul class="lp-bonuses">${bonusItems}</ul>` : ''}
+    <div class="lp-guarantee">🛡️ ${escapeHTML(full.guarantee)}</div>
+  </section>
+  ${testimonialItems ? `<section class="lp-testimonials"><h2>מה אומרים עלינו</h2>${testimonialItems}</section>` : ''}
+  <section class="lp-cta-section">
+    ${priceOrLeadBlock}
+  </section>
+  ${faqItems ? `<section class="lp-faq"><h2>שאלות נפוצות</h2>${faqItems}</section>` : ''}
+  <div class="lp-final">
+    <h2>${escapeHTML(content.finalCtaHeadline)}</h2>
+    <p>${escapeHTML(content.finalCtaSubtext)}</p>
+    ${isService ? '<button type="button" class="lp-btn-primary">משאירים פרטים</button>' : '<button type="button" class="lp-btn-primary">🛒 לרכישה מיידית</button>'}
+  </div>
+</body></html>`;
+  }
+
+  async function generateLandingPage(){
+    const lp = ensureLandingObject();
+    lp.status = 'loading';
+    renderLandingModal();
+    try{
+      const rootText = state.nodes[state.rootId].text;
+      const po = state.productOffer;
+      const content = await fetchLandingContent(rootText, po.teaser, po.full, po.productType, lp.intake);
+      lp.content = content;
+      lp.html = buildLandingHTML(content, lp.intake, po.teaser, po.full, po.productType);
+      lp.status = 'ready';
+    }catch(err){
+      console.error('generateLandingPage failed:', err);
+      lp.status = 'error';
+      lp.message = err && err.message ? err.message : 'שגיאה';
+    } finally {
+      renderLandingModal();
+      persist();
+    }
+  }
+
+  function buildElementorJSON(content, intake, teaser, full, productType){
+    const isService = productType === '1on1' || productType === 'group';
+    let widgetId = 1;
+    function widget(widgetType, settings){
+      return { id:'w'+(widgetId++), elType:'widget', widgetType, settings, elements:[] };
+    }
+    function section(elements, settings){
+      return { id:'s'+(widgetId++), elType:'section', settings: settings||{}, elements:[
+        { id:'c'+(widgetId++), elType:'column', settings:{ _column_size:100 }, elements }
+      ]};
+    }
+    const sections = [];
+    sections.push(section([
+      widget('heading', { title: content.headline, align:'center', size:'large' }),
+      widget('text-editor', { editor: content.subheadline })
+    ], { background_background:'classic', background_color:'#1B2430' }));
+    sections.push(section([
+      widget('heading', { title:'מוכר לכם?', align:'center' }),
+      widget('icon-list', { icon_list: content.painPoints.map(p=>({ text:p })) })
+    ]));
+    sections.push(section([
+      widget('heading', { title: teaser.name, align:'center' }),
+      widget('text-editor', { editor: content.solutionIntro })
+    ]));
+    sections.push(section([
+      widget('heading', { title:'מה מקבלים', align:'center' }),
+      widget('icon-list', { icon_list: full.valueStack.map(v=>({ text: v.item + ' - ' + v.value })) }),
+      widget('text-editor', { editor: '🛡️ ' + full.guarantee })
+    ]));
+    if(content.testimonials.length){
+      sections.push(section([
+        widget('heading', { title:'מה אומרים עלינו', align:'center' }),
+        widget('text-editor', { editor: content.testimonials.map(t=>'"'+t+'"').join('<br><br>') })
+      ]));
+    }
+    sections.push(section([
+      isService
+        ? widget('form', { form_name:'ליד', fields:[{field_label:'שם מלא'},{field_label:'טלפון'},{field_label:'אימייל'}], button_text:'שליחת פרטים' })
+        : widget('button', { text:'🛒 לרכישה מיידית', align:'center' })
+    ], { background_color:'#FBF8F3' }));
+    if(content.faq.length){
+      sections.push(section([
+        widget('heading', { title:'שאלות נפוצות', align:'center' }),
+        widget('text-editor', { editor: content.faq.map(f=>'<b>'+f.q+'</b><br>'+f.a).join('<br><br>') })
+      ]));
+    }
+    sections.push(section([
+      widget('heading', { title: content.finalCtaHeadline, align:'center' }),
+      widget('text-editor', { editor: content.finalCtaSubtext }),
+      isService ? widget('button', { text:'משאירים פרטים', align:'center' }) : widget('button', { text:'🛒 לרכישה מיידית', align:'center' })
+    ], { background_color:'#1B2430' }));
+
+    return {
+      content: sections,
+      page_settings: [],
+      version: '0.4',
+      title: (teaser.name || 'דף נחיתה') + ' - דף נחיתה',
+      type: 'page'
+    };
+  }
+
+  function downloadTextFile(filename, text, mimeType){
+    try{
+      const blob = new Blob([text], { type: mimeType || 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=> URL.revokeObjectURL(url), 4000);
+      return true;
+    }catch(e){
+      console.warn('Blob download failed:', e);
+      return false;
+    }
+  }
+
+  function renderLandingPreview(lp){
+    const iframe = document.createElement('iframe');
+    iframe.className = 'landing-preview-frame';
+    iframe.srcdoc = lp.html;
+    landingBodyEl.appendChild(iframe);
+
+    const actions = document.createElement('div');
+    actions.className = 'landing-actions';
+
+    const downloadBtn = document.createElement('button');
+    downloadBtn.type = 'button';
+    downloadBtn.className = 'btn';
+    downloadBtn.textContent = '⬇️ הורדת JSON לוורדפרס Elementor';
+    downloadBtn.addEventListener('click', ()=>{
+      const po = state.productOffer;
+      const jsonObj = buildElementorJSON(lp.content, lp.intake, po.teaser, po.full, po.productType);
+      const jsonText = JSON.stringify(jsonObj, null, 2);
+      const ok = downloadTextFile((po.teaser.name || 'landing-page') + '.json', jsonText);
+      if(!ok){
+        const box = document.createElement('div');
+        box.className = 'landing-fallback-box';
+        const note = document.createElement('div');
+        note.className = 'intake-hint';
+        note.textContent = 'ההורדה האוטומטית לא זמינה כאן - העתיקו את התוכן הבא ושמרו כקובץ .json:';
+        const ta = document.createElement('textarea');
+        ta.value = jsonText;
+        ta.readOnly = true;
+        box.appendChild(note);
+        box.appendChild(ta);
+        landingBodyEl.appendChild(box);
+      }
+    });
+    actions.appendChild(downloadBtn);
+
+    const guideBtn = document.createElement('button');
+    guideBtn.type = 'button';
+    guideBtn.className = 'btn ghost';
+    guideBtn.textContent = '📖 מדריך התקנה בוורדפרס';
+    guideBtn.addEventListener('click', ()=> openInstallGuide());
+    actions.appendChild(guideBtn);
+
+    landingBodyEl.appendChild(actions);
+
+    const editLink = document.createElement('span');
+    editLink.className = 'bio-edit-link';
+    editLink.textContent = '✏️ לעדכן פרטים ולבנות מחדש';
+    editLink.addEventListener('click', ()=>{ lp.status = 'form'; renderLandingModal(); });
+    landingBodyEl.appendChild(document.createElement('br'));
+    landingBodyEl.appendChild(editLink);
+  }
+
+  function openInstallGuide(){
+    installGuideBodyEl.innerHTML = '';
+    const steps = [
+      'ודאו שתוסף Elementor (או Elementor Pro) מותקן ופעיל באתר הוורדפרס שלכם.',
+      'צרו עמוד חדש (Pages > Add New), תנו לו שם, ולחצו על "Edit with Elementor".',
+      'בתוך עורך Elementor, פתחו את אייקון התיקיה בפינה השמאלית התחתונה ובחרו "Import Template".',
+      'העלו את קובץ ה-JSON שהורדתם מהכלי.',
+      'עברו על כל הסקשנים שיובאו ועדכנו טקסטים, תמונות וצבעים לפי הצורך - חלק מהעיצוב עשוי לדרוש כיוונון ידני בהתאם לגרסת Elementor שלכם.',
+      'אם יש בדף טופס השארת פרטים - חברו אותו לשירות שליחת מיילים או CRM (Mailchimp, Google Sheets וכו׳) דרך הגדרות הטופס ב-Elementor, או השתמשו בווידג\'ט הטופס המובנה של Elementor לחיבור מלא.',
+      'פרסמו את העמוד (Publish) ובדקו אותו גם במובייל וגם בדסקטופ לפני שיתוף.'
+    ];
+    steps.forEach((s, i)=>{
+      const row = document.createElement('div');
+      row.className = 'install-step';
+      const num = document.createElement('div');
+      num.className = 'install-step-num';
+      num.textContent = String(i+1);
+      const text = document.createElement('div');
+      text.className = 'install-step-text';
+      text.textContent = s;
+      row.appendChild(num); row.appendChild(text);
+      installGuideBodyEl.appendChild(row);
+    });
+    installGuideBackdrop.style.display = 'block';
+    installGuideModal.style.display = 'flex';
+    requestAnimationFrame(()=> installGuideModal.classList.add('open'));
+  }
+  function closeInstallGuide(){
+    installGuideModal.classList.remove('open');
+    installGuideBackdrop.style.display = 'none';
+    setTimeout(()=>{ if(!installGuideModal.classList.contains('open')) installGuideModal.style.display = 'none'; }, 260);
+  }
+  installGuideCloseBtn.addEventListener('click', closeInstallGuide);
+  installGuideBackdrop.addEventListener('click', closeInstallGuide);
+
+  // ---------- Topic start ----------
+  async function startMapping(){
+    const text = topicInput.value.trim();
+    if(!text) return;
+    const id = createNode(text, null, 0);
+    state.rootId = id;
+    state.title = text;
+    relayout();
+    updateChrome();
+    if(workspace.viewMode === 'map'){ render(); centerOnRoot(); }
+    else { renderListView(); }
+    renderTabs();
+    persist();
+    generateChildren(id, false);
+  }
+  document.getElementById('start-btn').addEventListener('click', startMapping);
+  topicInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); startMapping(); }
+  });
+
+  // ---------- Pan & Zoom ----------
+  let dragging = false, dragStart = {x:0,y:0}, panStart = {x:0,y:0};
+  viewport.addEventListener('pointerdown', (e)=>{
+    const nonRootNode = e.target.closest('.node') && !e.target.closest('.node.root');
+    if(nonRootNode || e.target.closest('.node-actions') || e.target.closest('#controls')) return;
+    dragging = true;
+    viewport.classList.add('grabbing');
+    dragStart = {x:e.clientX, y:e.clientY};
+    panStart = {x:state.panX, y:state.panY};
+    viewport.setPointerCapture(e.pointerId);
+  });
+  viewport.addEventListener('pointermove', (e)=>{
+    if(!dragging) return;
+    state.panX = panStart.x + (e.clientX - dragStart.x);
+    state.panY = panStart.y + (e.clientY - dragStart.y);
+    applyTransform();
+  });
+  ['pointerup','pointercancel'].forEach(ev=>{
+    viewport.addEventListener(ev, ()=>{ dragging=false; viewport.classList.remove('grabbing'); });
+  });
+  viewport.addEventListener('wheel', (e)=>{
+    if(!state.rootId) return;
+    e.preventDefault();
+    const rect = viewport.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const worldX = (mx - state.panX)/state.scale;
+    const worldY = (my - state.panY)/state.scale;
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.min(2.2, Math.max(0.25, state.scale*delta));
+    state.panX = mx - worldX*newScale;
+    state.panY = my - worldY*newScale;
+    state.scale = newScale;
+    applyTransform();
+  }, {passive:false});
+
+  document.getElementById('zoom-in').addEventListener('click', ()=>{
+    state.scale = Math.min(2.2, state.scale*1.15);
+    applyTransform();
+  });
+  document.getElementById('zoom-out').addEventListener('click', ()=>{
+    state.scale = Math.max(0.25, state.scale*0.87);
+    applyTransform();
+  });
+  document.getElementById('zoom-reset').addEventListener('click', ()=>{
+    state.scale = 0.85;
+    centerOnRoot();
+  });
+
+  window.addEventListener('resize', ()=>{ if(state.rootId && workspace.viewMode==='map') centerOnRoot(); });
+
+  // ---------- Init ----------
+  (async function init(){
+    const restored = await restore();
+    if(!restored){
+      createTab(true);
+      return;
+    }
+    renderTabs();
+    updateChrome();
+    if(state.rootId){
+      relayout();
+      if(workspace.viewMode === 'map'){ render(); centerOnRoot(); }
+      else { renderListView(); }
+    }
+  })();
+
+})();
+</script>
+</body>
+</html>
