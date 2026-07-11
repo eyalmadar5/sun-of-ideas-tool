@@ -2187,15 +2187,95 @@ ${excludeLine}
     return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
   }
 
+  let tpRecognition = null;
+  let tpRecording = false;
+  let tpCurrentCaption = '';
+
+  function tpWrapCaptionLines(ctx, text, maxWidth){
+    const words = text.split(' ');
+    let lines = [], line = '';
+    words.forEach(w=>{
+      const test = line ? line + ' ' + w : w;
+      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+      else line = test;
+    });
+    if(line) lines.push(line);
+    return lines.slice(-2); // כתוביות רגילות מציגות עד שתי שורות בכל רגע נתון
+  }
+
   function tpStartRecording(){
     if(!tpCameraStream) return;
-    // Record the camera feed exactly as-is (video + mic) — the prompter text is only
-    // a reading aid shown live on screen, it should never end up baked into the file.
+    tpRecording = true;
+    tpCurrentCaption = '';
+
+    // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו
+    //     בדיוק את מה שנאמר בפועל (כולל אם מוסיפים/מורידים מילים מהתסריט) ---
+    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(SpeechRecognitionCtor){
+      tpRecognition = new SpeechRecognitionCtor();
+      tpRecognition.lang = 'he-IL';
+      tpRecognition.continuous = true;
+      tpRecognition.interimResults = true;
+      tpRecognition.onresult = (event)=>{
+        let text = '';
+        for(let i = event.resultIndex; i < event.results.length; i++){
+          text += event.results[i][0].transcript;
+        }
+        tpCurrentCaption = text.trim();
+      };
+      tpRecognition.onerror = (e)=> console.warn('Speech recognition error:', e.error);
+      tpRecognition.onend = ()=>{
+        if(tpRecording){ try{ tpRecognition.start(); }catch(e){} } // חלק מהדפדפנים עוצרים לבד אחרי זמן - מפעילים שוב
+      };
+      try{ tpRecognition.start(); }catch(e){ console.warn('Could not start speech recognition:', e); }
+    } else {
+      showError('זיהוי דיבור אוטומטי לכתוביות לא נתמך בדפדפן הזה - ההקלטה תמשיך בלי כתוביות.');
+    }
+
+    // --- ציור פריים-אחר-פריים על קנבס: הווידאו כמו שהוא (בלי שום היפוך - זה בדיוק
+    //     האוריינטציה הנכונה לפלט, ההיפוך שרואים בתצוגה הוא רק CSS על התצוגה החיה),
+    //     ומעליו שורת הכתובית הנוכחית מזיהוי הדיבור. אין כאן שום save()/restore() -
+    //     בכוונה, כדי למנוע את הבאג הקודם של חוסר איזון שהקפיא את התמונה. ---
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280; canvas.height = 720;
+    const ctx = canvas.getContext('2d');
+
+    function drawFrame(){
+      if(!tpRecording) return;
+      ctx.drawImage(tpCameraVideo, 0, 0, canvas.width, canvas.height);
+      if(tpCurrentCaption){
+        ctx.font = '700 30px Rubik, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = tpWrapCaptionLines(ctx, tpCurrentCaption, canvas.width * 0.86);
+        const lineHeight = 40;
+        const boxHeight = lines.length * lineHeight + 24;
+        const boxY = canvas.height - boxHeight - 30;
+        ctx.fillStyle = 'rgba(0,0,0,0.62)';
+        ctx.fillRect(canvas.width*0.05, boxY, canvas.width*0.9, boxHeight);
+        ctx.fillStyle = '#fff';
+        lines.forEach((line, i)=>{
+          ctx.fillText(line, canvas.width/2, boxY + 12 + i*lineHeight + lineHeight/2);
+        });
+      }
+      requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+
+    const canvasStream = canvas.captureStream(30);
+    const audioTrack = tpCameraStream.getAudioTracks()[0];
+    if(audioTrack) canvasStream.addTrack(audioTrack);
+
     tpRecordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    tpMediaRecorder = new MediaRecorder(tpCameraStream, { mimeType });
+    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = ()=>{
+      tpRecording = false;
+      if(tpRecognition){
+        try{ tpRecognition.onend = null; tpRecognition.stop(); }catch(e){}
+        tpRecognition = null;
+      }
       const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2219,6 +2299,7 @@ ${excludeLine}
     tpStart(); // גם מתחילים לגלול אוטומטית עם תחילת ההקלטה
   }
   function tpStopRecording(){
+    tpRecording = false;
     if(tpMediaRecorder && tpMediaRecorder.state !== 'inactive') tpMediaRecorder.stop();
     clearInterval(tpRecordTimerInterval);
     tpRecordTimer.style.display = 'none';
