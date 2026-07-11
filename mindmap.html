@@ -293,6 +293,41 @@
     display:none;z-index:30;max-width:320px;
   }
 
+  /* ---------- TELEPROMPTER ---------- */
+  #teleprompter-overlay{
+    position:fixed;inset:0;z-index:200;
+    background:rgba(10,10,10,0.85);
+    display:none;flex-direction:column;
+  }
+  #teleprompter-overlay.open{display:flex;}
+  #teleprompter-controls{
+    flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:16px;
+    padding:12px 20px;background:rgba(0,0,0,0.75);
+    font-family:'Heebo',sans-serif;font-size:12.5px;color:#fff;
+  }
+  #teleprompter-controls label{display:flex;align-items:center;gap:6px;white-space:nowrap;}
+  #teleprompter-controls button{
+    font-family:'Heebo',sans-serif;font-weight:600;font-size:12.5px;
+    background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.3);
+    border-radius:10px;padding:8px 14px;cursor:pointer;white-space:nowrap;
+  }
+  #teleprompter-controls button:hover{background:rgba(255,255,255,0.22);}
+  #teleprompter-controls button.active{background:var(--sun-deep);border-color:var(--sun-deep);}
+  #teleprompter-viewport{
+    flex:1 1 auto;overflow-y:auto;overflow-x:hidden;
+    scrollbar-width:none;
+  }
+  #teleprompter-viewport::-webkit-scrollbar{display:none;}
+  #teleprompter-text{
+    font-family:'Rubik',sans-serif;font-weight:700;color:#fff;
+    text-align:center;line-height:1.6;
+    padding:60vh 8vw 90vh;
+    white-space:pre-wrap;
+    transition:font-size .15s ease;
+  }
+  #teleprompter-text .tp-cta{color:#FFD873;}
+  #teleprompter-overlay.mirrored #teleprompter-text{transform:scaleX(-1);}
+
   #product-nudge{
     position:fixed;bottom:20px;left:20px;right:auto;
     background:var(--card);border:2px solid var(--sun-deep);border-radius:16px;
@@ -400,6 +435,23 @@
   .script-panel-footer .btn{flex:1 1 auto;font-size:13px;padding:10px 14px;}
   .script-regen-wrap{flex:1 1 auto;position:relative;}
   .script-regen-wrap .btn{width:100%;}
+  .revise-box{
+    flex:0 0 auto;display:flex;gap:8px;padding:10px 20px;
+    background:var(--paper-2);border-top:1px dashed var(--line);
+  }
+  .revise-box input{
+    flex:1 1 auto;font-family:'Rubik',sans-serif;font-size:13px;
+    padding:9px 12px;border-radius:10px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;
+  }
+  .revise-box input:focus{border-color:var(--sun-deep);}
+  .revise-box button{
+    flex:0 0 auto;font-family:'Heebo',sans-serif;font-weight:600;font-size:12.5px;
+    background:var(--sun-deep);color:#fff;border:none;border-radius:10px;
+    padding:0 14px;cursor:pointer;white-space:nowrap;
+  }
+  .revise-box button:hover{background:#a04f22;}
+  .revise-box button:disabled{opacity:.6;cursor:default;}
   .style-menu{
     position:absolute;bottom:calc(100% + 8px);right:0;left:0;
     background:var(--card);border:1.5px solid var(--line);border-radius:12px;
@@ -711,11 +763,30 @@
       <button id="script-close" type="button" title="סגירה">✕</button>
     </div>
     <div id="script-body"></div>
+    <div id="script-revise-box" class="revise-box">
+      <input type="text" id="script-revise-input" placeholder="רוצים שינוי? למשל: 'תעשו את זה יותר קליל' או 'קצרו את ההוק'">
+      <button type="button" id="script-revise-btn">✏️ עדכנו</button>
+    </div>
     <div class="script-panel-footer">
       <div class="script-regen-wrap">
         <button id="script-regenerate" class="btn ghost" type="button">🔄 תסריט אחר ▾</button>
       </div>
+      <button id="script-teleprompter-btn" class="btn ghost" type="button">📽️ טלפרומפטר</button>
       <button id="script-copy" class="btn" type="button">העתקת התסריט</button>
+    </div>
+  </div>
+
+  <div id="teleprompter-overlay">
+    <div id="teleprompter-controls">
+      <button type="button" id="tp-close" title="סגירה">✕ סגירה</button>
+      <button type="button" id="tp-playpause">⏸️ עצירה</button>
+      <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
+      <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
+      <label>שקיפות רקע <input type="range" id="tp-opacity" min="20" max="100" value="85"></label>
+      <button type="button" id="tp-mirror">🪞 הפוך (מראה)</button>
+    </div>
+    <div id="teleprompter-viewport">
+      <div id="teleprompter-text"></div>
     </div>
   </div>
 
@@ -729,6 +800,10 @@
       <button id="bio-close" type="button" title="סגירה">✕</button>
     </div>
     <div id="bio-body"></div>
+    <div id="bio-revise-box" class="revise-box" style="display:none;">
+      <input type="text" id="bio-revise-input" placeholder="רוצים שינוי? למשל: 'תעשו את זה יותר בטוח עצמי'">
+      <button type="button" id="bio-revise-btn">✏️ עדכנו</button>
+    </div>
     <div class="script-panel-footer" id="bio-footer"></div>
   </div>
 
@@ -848,6 +923,9 @@
   const scriptCloseBtn = document.getElementById('script-close');
   const scriptRegenBtn = document.getElementById('script-regenerate');
   const scriptCopyBtn = document.getElementById('script-copy');
+  const scriptTeleprompterBtn = document.getElementById('script-teleprompter-btn');
+  const scriptReviseInput = document.getElementById('script-revise-input');
+  const scriptReviseBtn = document.getElementById('script-revise-btn');
   let scriptPanelNodeId = null;
 
   const bioBackdrop = document.getElementById('bio-backdrop');
@@ -856,6 +934,9 @@
   const bioBodyEl = document.getElementById('bio-body');
   const bioCloseBtn = document.getElementById('bio-close');
   const bioFooterEl = document.getElementById('bio-footer');
+  const bioReviseBox = document.getElementById('bio-revise-box');
+  const bioReviseInput = document.getElementById('bio-revise-input');
+  const bioReviseBtn = document.getElementById('bio-revise-btn');
   let bioPanelOpen = false;
 
   const productBackdrop = document.getElementById('product-backdrop');
@@ -1800,6 +1881,8 @@ ${excludeLine}
     if(!rs || rs.status === 'loading'){
       scriptRegenBtn.disabled = true;
       scriptCopyBtn.disabled = true;
+      scriptTeleprompterBtn.disabled = true;
+      document.getElementById('script-revise-box').style.display = 'none';
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
       loadingEl.textContent = '✍️ כותב תסריט ובודק מה עובד היום ברילים…';
@@ -1810,6 +1893,8 @@ ${excludeLine}
 
     if(rs.status === 'error'){
       scriptCopyBtn.disabled = true;
+      scriptTeleprompterBtn.disabled = true;
+      document.getElementById('script-revise-box').style.display = 'none';
       const errEl = document.createElement('div');
       errEl.className = 'script-error';
       errEl.textContent = '⚠ לא הצלחתי לכתוב תסריט כרגע (' + (rs.message || 'שגיאה') + '). לחצו על "תסריט אחר" לניסיון חוזר.';
@@ -1818,6 +1903,8 @@ ${excludeLine}
     }
 
     scriptCopyBtn.disabled = false;
+    scriptTeleprompterBtn.disabled = false;
+    document.getElementById('script-revise-box').style.display = 'flex';
     if(rs.style){
       const styleObj = REEL_STYLES.find(s=>s.key === rs.style);
       if(styleObj){
@@ -1947,6 +2034,128 @@ ${excludeLine}
     const node = state.nodes[scriptPanelNodeId];
     if(!node || !node.reelScript || node.reelScript.status !== 'ready') return;
     copyTextSmart(scriptToPlainText(node.reelScript, node.text), scriptCopyBtn);
+  });
+
+  // ---------- Teleprompter ----------
+  const tpOverlay = document.getElementById('teleprompter-overlay');
+  const tpViewport = document.getElementById('teleprompter-viewport');
+  const tpTextEl = document.getElementById('teleprompter-text');
+  const tpClose = document.getElementById('tp-close');
+  const tpPlayPause = document.getElementById('tp-playpause');
+  const tpSpeed = document.getElementById('tp-speed');
+  const tpFontSize = document.getElementById('tp-fontsize');
+  const tpOpacity = document.getElementById('tp-opacity');
+  const tpMirror = document.getElementById('tp-mirror');
+  let tpPlaying = false;
+  let tpRafId = null;
+  let tpMirrored = false;
+
+  scriptTeleprompterBtn.addEventListener('click', ()=>{
+    if(!scriptPanelNodeId) return;
+    const node = state.nodes[scriptPanelNodeId];
+    if(!node || !node.reelScript || node.reelScript.status !== 'ready') return;
+    const rs = node.reelScript;
+    tpTextEl.innerHTML = '';
+    const hookP = document.createElement('div');
+    hookP.textContent = rs.hook;
+    hookP.style.marginBottom = '2em';
+    tpTextEl.appendChild(hookP);
+    const bodyP = document.createElement('div');
+    bodyP.textContent = rs.body;
+    bodyP.style.marginBottom = '2em';
+    tpTextEl.appendChild(bodyP);
+    if(rs.cta){
+      const ctaP = document.createElement('div');
+      ctaP.textContent = rs.cta;
+      ctaP.className = 'tp-cta';
+      tpTextEl.appendChild(ctaP);
+    }
+    tpFontSize.dispatchEvent(new Event('input'));
+    tpOpacity.dispatchEvent(new Event('input'));
+    tpOverlay.classList.add('open');
+    tpViewport.scrollTop = 0;
+    tpStart();
+  });
+
+  function tpStart(){
+    tpPlaying = true;
+    tpPlayPause.textContent = '⏸️ עצירה';
+    tpTick();
+  }
+  function tpStop(){
+    tpPlaying = false;
+    tpPlayPause.textContent = '▶️ המשך';
+    if(tpRafId) cancelAnimationFrame(tpRafId);
+  }
+  function tpTick(){
+    if(!tpPlaying) return;
+    const speed = Number(tpSpeed.value); // 1..10
+    tpViewport.scrollTop += speed * 0.6;
+    // הגענו לסוף - עוצרים לבד
+    if(tpViewport.scrollTop + tpViewport.clientHeight >= tpViewport.scrollHeight - 4){
+      tpStop();
+      return;
+    }
+    tpRafId = requestAnimationFrame(tpTick);
+  }
+  tpPlayPause.addEventListener('click', ()=>{ tpPlaying ? tpStop() : tpStart(); });
+  tpClose.addEventListener('click', ()=>{
+    tpStop();
+    tpOverlay.classList.remove('open');
+  });
+  tpFontSize.addEventListener('input', ()=>{
+    tpTextEl.style.fontSize = tpFontSize.value + 'px';
+  });
+  tpOpacity.addEventListener('input', ()=>{
+    tpOverlay.style.background = 'rgba(10,10,10,' + (Number(tpOpacity.value)/100) + ')';
+  });
+  tpMirror.addEventListener('click', ()=>{
+    tpMirrored = !tpMirrored;
+    tpOverlay.classList.toggle('mirrored', tpMirrored);
+    tpMirror.classList.toggle('active', tpMirrored);
+  });
+
+  // ---------- Revise reel script with a free-text instruction ----------
+  async function reviseReelScript(instruction){
+    if(!scriptPanelNodeId) return;
+    const node = state.nodes[scriptPanelNodeId];
+    if(!node || !node.reelScript || node.reelScript.status !== 'ready') return;
+    const rs = node.reelScript;
+    scriptReviseBtn.disabled = true;
+    const originalLabel = scriptReviseBtn.textContent;
+    scriptReviseBtn.textContent = 'מעדכן...';
+    try{
+      const system = `אתם קופירייטר/ית מומחה/ית בעריכת תסריטים לרילים ויראליים (טיקטוק, אינסטגרם, פייסבוק), עם דגש על שכנוע ופסיכולוגיה שיווקית - הוק חזק ב-2-3 השניות הראשונות, ערך אמיתי בגוף, קריאה לפעולה אחת וברורה, שפה מדוברת בגוף שני, אורך שמתאים להקראה בתוך כדקה (עד כ-150 מילים בסך הכל).
+קיבלתם תסריט קיים (JSON) ובקשת שינוי מהיזם/ית. עדכנו את התסריט לפי הבקשה בלבד, תוך שמירה על כל שאר החלקים שהבקשה לא נוגעת בהם ועל העקרונות שלמעלה. השיבו אך ורק באותו מבנה JSON בדיוק:
+{"hook":"...", "body":"...", "cta":"...", "shots":["..."], "caption":"...", "hashtags":["..."]}`;
+      const user = `התסריט הקיים:
+${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], caption:rs.caption||'', hashtags:rs.hashtags||[]})}
+
+בקשת השינוי מהיזם/ית: ${instruction}
+
+עדכנו את התסריט בהתאם. החזירו אך ורק JSON object באותו מבנה.`;
+      const resp = await callClaude(system, user, false);
+      const parsed = parseScriptJSON(resp.text);
+      if(!parsed) throw new Error('לא הצלחתי לפרש את התסריט המעודכן');
+      node.reelScript = Object.assign({}, rs, parsed, { status:'ready' });
+      renderScriptPanel();
+      refreshViews();
+      persist();
+      scriptReviseInput.value = '';
+    }catch(err){
+      console.error('reviseReelScript failed:', err);
+      showError('לא הצלחתי לעדכן את התסריט (' + (err && err.message ? err.message : 'שגיאה') + ')');
+    } finally {
+      scriptReviseBtn.disabled = false;
+      scriptReviseBtn.textContent = originalLabel;
+    }
+  }
+  scriptReviseBtn.addEventListener('click', ()=>{
+    const instruction = scriptReviseInput.value.trim();
+    if(instruction) reviseReelScript(instruction);
+  });
+  scriptReviseInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); scriptReviseBtn.click(); }
   });
 
   // ---------- Converting bio wizard ----------
@@ -2109,10 +2318,51 @@ ${excludeLine}
     if(!bioPanelOpen || !state.bio) return;
     if(state.bio.status === 'form' || !state.bio.status){
       renderBioForm();
+      bioReviseBox.style.display = 'none';
     } else {
       renderBioResult();
+      bioReviseBox.style.display = (state.bio.status === 'ready') ? 'flex' : 'none';
     }
   }
+
+  async function reviseBio(instruction){
+    const bio = state.bio;
+    if(!bio || bio.status !== 'ready' || !bio.result) return;
+    bioReviseBtn.disabled = true;
+    const originalLabel = bioReviseBtn.textContent;
+    bioReviseBtn.textContent = 'מעדכן...';
+    try{
+      const system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית - כותרת קצרה (tagline) ואחריה בדיוק 4 שורות bullets עם אימוג'ים (אמינות/ניסיון, למי עוזרים, הסרת התנגדות עם תנאי/זמן, קריאה לפעולה).
+קיבלתם ביו קיים (JSON) ובקשת שינוי מהיזם/ית. עדכנו לפי הבקשה בלבד, תוך שמירה על המבנה והעקרונות. השיבו אך ורק JSON: {"tagline":"...", "bullets":["...","...","...","..."]}`;
+      const user = `הביו הקיים:
+${JSON.stringify(bio.result)}
+
+בקשת השינוי מהיזם/ית: ${instruction}
+
+עדכנו את הביו בהתאם. החזירו אך ורק JSON object.`;
+      const resp = await callClaude(system, user, false);
+      const parsed = parseBioJSON(resp.text);
+      if(!parsed) throw new Error('לא הצלחתי לפרש את הביו המעודכן');
+      bio.result = parsed;
+      renderBioPanel();
+      refreshViews();
+      persist();
+      bioReviseInput.value = '';
+    }catch(err){
+      console.error('reviseBio failed:', err);
+      showError('לא הצלחתי לעדכן את הביו (' + (err && err.message ? err.message : 'שגיאה') + ')');
+    } finally {
+      bioReviseBtn.disabled = false;
+      bioReviseBtn.textContent = originalLabel;
+    }
+  }
+  bioReviseBtn.addEventListener('click', ()=>{
+    const instruction = bioReviseInput.value.trim();
+    if(instruction) reviseBio(instruction);
+  });
+  bioReviseInput.addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); bioReviseBtn.click(); }
+  });
 
   function bioToPlainText(result){
     let out = result.tagline + '\n\n';
