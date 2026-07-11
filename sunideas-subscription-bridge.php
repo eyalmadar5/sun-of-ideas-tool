@@ -180,7 +180,7 @@ function sunideas_render_settings_page() {
                 <tr>
                     <th><label for="sunideas_tool_page_url">כתובת עמוד הכלי (להגבלת גישה)</label></th>
                     <td><input type="text" id="sunideas_tool_page_url" name="sunideas_tool_page_url"
-                               value="<?php echo esc_attr(get_option('sunideas_tool_page_url')); ?>" class="regular-text"
+                               value="<?php echo esc_attr(get_option('sunideas_tool_page_url', '/הכלי/')); ?>" class="regular-text"
                                placeholder="/הכלי/ או /app/"></td>
                 </tr>
                 <tr>
@@ -519,7 +519,6 @@ function sunideas_verify_history_token($user_id, $exp, $token) {
 }
 
 function sunideas_render_fullbleed_page($iframe_url){
-    $iframe_url = esc_url($iframe_url);
     $qs = $_SERVER['QUERY_STRING'] ?? '';
     if(!empty($qs)){
         $iframe_url .= (strpos($iframe_url, '?') === false ? '?' : '&') . $qs;
@@ -548,10 +547,16 @@ add_action('template_redirect', function () {
     $is_front = is_front_page() || is_home() || $current_path === '';
 
     // --- עמודים ציבוריים (בית / הרשמה / התחברות): במסך מלא, בלי הגבלת גישה ---
+    // חשוב: לכל אחד יש כאן ברירת מחדל אמיתית וקבועה בקוד (לא רק בתצוגת ההגדרות) -
+    // כך שהאתר ממשיך לעבוד נכון גם מיד אחרי התקנה טרייה של התוסף, לפני שמישהו
+    // בכלל פתח את מסך ההגדרות ולחץ שמירה.
     $public_pages = [
-        ['path' => get_option('sunideas_home_page_url', '/'),   'url' => get_option('sunideas_home_iframe_url')],
-        ['path' => get_option('sunideas_signup_page_url', ''),  'url' => get_option('sunideas_signup_iframe_url')],
-        ['path' => get_option('sunideas_login_page_url', ''),   'url' => get_option('sunideas_login_iframe_url')],
+        ['path' => get_option('sunideas_home_page_url', '/'),
+         'url'  => get_option('sunideas_home_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site.html')],
+        ['path' => get_option('sunideas_signup_page_url', '/הרשמה/'),
+         'url'  => get_option('sunideas_signup_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html')],
+        ['path' => get_option('sunideas_login_page_url', '/התחברות/'),
+         'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html')],
     ];
     foreach ($public_pages as $p) {
         if (empty($p['url'])) continue;
@@ -564,7 +569,7 @@ add_action('template_redirect', function () {
     }
 
     // --- עמוד הכלי: דורש התחברות (ואולי מנוי פעיל) ---
-    $tool_path = get_option('sunideas_tool_page_url', '');
+    $tool_path = get_option('sunideas_tool_page_url', '/הכלי/');
     if (empty($tool_path)) return;
 
     $tool_path_norm = rtrim(urldecode($tool_path), '/');
