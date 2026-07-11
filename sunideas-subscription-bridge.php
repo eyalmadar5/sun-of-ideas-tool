@@ -308,6 +308,7 @@ add_action('rest_api_init', function () {
 }, 15);
 
 function sunideas_handle_save_workspace(WP_REST_Request $request) {
+    nocache_headers();
     $params = $request->get_json_params();
     if (empty($params)) $params = $request->get_params();
 
@@ -328,6 +329,7 @@ function sunideas_handle_save_workspace(WP_REST_Request $request) {
 }
 
 function sunideas_handle_load_workspace(WP_REST_Request $request) {
+    nocache_headers(); // קריטי - זה נתון פרטי לכל משתמש, אסור בשום מקרה שיהיה בקאש (של הדפדפן, LiteSpeed וכו')
     $uid = $request->get_param('uid');
     $exp = $request->get_param('exp');
     $tok = $request->get_param('tok');

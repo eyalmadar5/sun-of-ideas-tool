@@ -923,8 +923,9 @@
       let raw = null;
       if(HAS_ACCOUNT){
         const url = WP_API_BASE + '/load-workspace?uid=' + encodeURIComponent(AUTH.uid)
-          + '&exp=' + encodeURIComponent(AUTH.exp) + '&tok=' + encodeURIComponent(AUTH.tok);
-        const res = await fetch(url);
+          + '&exp=' + encodeURIComponent(AUTH.exp) + '&tok=' + encodeURIComponent(AUTH.tok)
+          + '&_=' + Date.now(); // cache-buster — this is per-user data, must never be served stale/cached
+        const res = await fetch(url, { cache: 'no-store' });
         if(res.ok){
           const body = await res.json();
           raw = body && body.data ? body.data : null;
