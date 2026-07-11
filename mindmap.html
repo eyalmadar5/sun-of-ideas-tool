@@ -2205,13 +2205,33 @@ ${excludeLine}
     return lines.slice(-2); // כתוביות רגילות מציגות עד שתי שורות בכל רגע נתון
   }
 
+  let tpTranscriptSegments = []; // {text, startSec, endSec} — built from real speech, for the .srt file
+
+  function tpFormatSrtTime(sec){
+    const h = Math.floor(sec/3600);
+    const m = Math.floor((sec%3600)/60);
+    const s = Math.floor(sec%60);
+    const ms = Math.round((sec - Math.floor(sec)) * 1000);
+    const pad = (n,len)=> String(n).padStart(len||2,'0');
+    return pad(h)+':'+pad(m)+':'+pad(s)+','+pad(ms,3);
+  }
+  function tpBuildSrt(segments){
+    return segments.map((seg, i)=>
+      (i+1) + '\n' + tpFormatSrtTime(seg.startSec) + ' --> ' + tpFormatSrtTime(seg.endSec) + '\n' + seg.text + '\n'
+    ).join('\n');
+  }
+
   function tpStartRecording(){
     if(!tpCameraStream) return;
     tpRecording = true;
     tpCurrentCaption = '';
+    tpTranscriptSegments = [];
+    let lastSegmentEnd = 0;
 
-    // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו
-    //     בדיוק את מה שנאמר בפועל (כולל אם מוסיפים/מורידים מילים מהתסריט) ---
+    // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו בדיוק
+    //     מה שנאמר בפועל. בונים מזה קובץ כתוביות (.srt) נפרד שיורד יחד עם הווידאו,
+    //     במקום "לצייר" אותן לתוך הווידאו עצמו - זה נמנע לגמרי מבעיות סיבוב/עיוות
+    //     שקורות כשמנסים לשחזר את הפריים הגולמי של המצלמה על קנבס. ---
     const capStatusEl = document.getElementById('tp-caption-status');
     capStatusEl.style.display = 'inline';
     capStatusEl.textContent = '💬 כתוביות: מאתחל...';
@@ -2223,12 +2243,23 @@ ${excludeLine}
       tpRecognition.interimResults = true;
       tpRecognition.onstart = ()=>{ capStatusEl.textContent = '💬 כתוביות: מאזין...'; };
       tpRecognition.onresult = (event)=>{
-        let text = '';
+        let interimText = '';
         for(let i = event.resultIndex; i < event.results.length; i++){
-          text += event.results[i][0].transcript;
+          const result = event.results[i];
+          const transcript = result[0].transcript;
+          if(result.isFinal){
+            const nowSec = (Date.now() - tpRecordStartTime) / 1000;
+            const text = transcript.trim();
+            if(text){
+              tpTranscriptSegments.push({ text, startSec: lastSegmentEnd, endSec: nowSec });
+              lastSegmentEnd = nowSec;
+            }
+          } else {
+            interimText += transcript;
+          }
         }
-        tpCurrentCaption = text.trim();
-        capStatusEl.textContent = '💬 ' + tpCurrentCaption.slice(-40);
+        tpCurrentCaption = interimText.trim();
+        if(tpCurrentCaption) capStatusEl.textContent = '💬 ' + tpCurrentCaption.slice(-40);
       };
       tpRecognition.onerror = (e)=>{
         console.warn('Speech recognition error:', e.error);
@@ -2245,56 +2276,11 @@ ${excludeLine}
       capStatusEl.textContent = '⚠️ כתוביות: לא נתמך בדפדפן זה';
     }
 
-    // --- ציור פריים-אחר-פריים על קנבס. חשוב: בטלפונים רבים המצלמה הקדמית
-    //     "חושבת" ברוחב גם כשמחזיקים לאורך (התצוגה החיה מסתובבת ויזואלית
-    //     ע"י הדפדפן, אבל ה-buffer הגולמי שקנבס קורא נשאר ברוחב) - בודקים
-    //     את זה ומסובבים את הציור ב-90 מעלות במקרה כזה, כדי שהפלט תמיד
-    //     יצא לאורך כמו ריל אמיתי. ---
-    const canvas = document.createElement('canvas');
-    const rawW = tpCameraVideo.videoWidth || 720;
-    const rawH = tpCameraVideo.videoHeight || 1280;
-    const needsRotation = rawW > rawH;
-    canvas.width = needsRotation ? rawH : rawW;
-    canvas.height = needsRotation ? rawW : rawH;
-    const ctx = canvas.getContext('2d');
-
-    function drawFrame(){
-      if(!tpRecording) return;
-      if(needsRotation){
-        ctx.save();
-        ctx.translate(canvas.width/2, canvas.height/2);
-        ctx.rotate(Math.PI/2);
-        ctx.drawImage(tpCameraVideo, -rawW/2, -rawH/2, rawW, rawH);
-        ctx.restore();
-      } else {
-        ctx.drawImage(tpCameraVideo, 0, 0, canvas.width, canvas.height);
-      }
-      if(tpCurrentCaption){
-        ctx.font = '700 30px Rubik, Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const lines = tpWrapCaptionLines(ctx, tpCurrentCaption, canvas.width * 0.86);
-        const lineHeight = 40;
-        const boxHeight = lines.length * lineHeight + 24;
-        const boxY = canvas.height - boxHeight - 30;
-        ctx.fillStyle = 'rgba(0,0,0,0.62)';
-        ctx.fillRect(canvas.width*0.05, boxY, canvas.width*0.9, boxHeight);
-        ctx.fillStyle = '#fff';
-        lines.forEach((line, i)=>{
-          ctx.fillText(line, canvas.width/2, boxY + 12 + i*lineHeight + lineHeight/2);
-        });
-      }
-      requestAnimationFrame(drawFrame);
-    }
-    drawFrame();
-
-    const canvasStream = canvas.captureStream(30);
-    const audioTrack = tpCameraStream.getAudioTracks()[0];
-    if(audioTrack) canvasStream.addTrack(audioTrack);
-
+    // --- הקלטה ישירה של הזרם הגולמי (וידאו+שמע), בלי קנבס - זה מה שנתן
+    //     אוריינטציה נכונה בעבר, ונשארים איתו כדי לא לסכן את זה שוב. ---
     tpRecordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
+    tpMediaRecorder = new MediaRecorder(tpCameraStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = ()=>{
       tpRecording = false;
@@ -2302,15 +2288,32 @@ ${excludeLine}
         try{ tpRecognition.onend = null; tpRecognition.stop(); }catch(e){}
         tpRecognition = null;
       }
+      const stamp = Date.now();
       const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reel-' + Date.now() + '.webm';
+      a.download = 'reel-' + stamp + '.webm';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(()=> URL.revokeObjectURL(url), 5000);
+
+      // קובץ כתוביות נפרד - אפשר לייבא אותו יחד עם הווידאו לכל עורך (CapCut וכו')
+      if(tpTranscriptSegments.length > 0){
+        const srt = tpBuildSrt(tpTranscriptSegments);
+        const srtBlob = new Blob([srt], { type: 'text/plain' });
+        const srtUrl = URL.createObjectURL(srtBlob);
+        const a2 = document.createElement('a');
+        a2.href = srtUrl;
+        a2.download = 'reel-' + stamp + '.srt';
+        setTimeout(()=>{
+          document.body.appendChild(a2);
+          a2.click();
+          document.body.removeChild(a2);
+          setTimeout(()=> URL.revokeObjectURL(srtUrl), 5000);
+        }, 400); // עיכוב קטן כדי שהדפדפן לא יחסום שתי הורדות בבת אחת
+      }
     };
     tpMediaRecorder.start();
 
