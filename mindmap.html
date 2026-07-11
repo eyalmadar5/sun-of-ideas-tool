@@ -293,6 +293,31 @@
     display:none;z-index:30;max-width:320px;
   }
 
+  #product-nudge{
+    position:fixed;bottom:20px;left:20px;right:auto;
+    background:var(--card);border:2px solid var(--sun-deep);border-radius:16px;
+    box-shadow:0 10px 30px rgba(36,38,31,0.22);
+    padding:16px 18px;max-width:280px;
+    display:none;flex-direction:column;gap:10px;z-index:55;
+    animation:product-nudge-in .35s cubic-bezier(.2,.8,.3,1);
+  }
+  @keyframes product-nudge-in{ from{ transform:translateY(16px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  #product-nudge-close{
+    position:absolute;top:8px;left:10px;background:none;border:none;
+    font-size:13px;color:var(--ink-soft);cursor:pointer;padding:2px;
+  }
+  #product-nudge-close:hover{color:var(--ink);}
+  #product-nudge-text{
+    font-family:'Rubik',sans-serif;font-size:14.5px;font-weight:600;color:var(--ink);
+    padding-left:16px;line-height:1.4;
+  }
+  #product-nudge-cta{
+    font-family:'Rubik',sans-serif;font-weight:700;font-size:13.5px;
+    background:var(--sun-deep);color:#fff;border:none;border-radius:12px;
+    padding:10px 14px;cursor:pointer;
+  }
+  #product-nudge-cta:hover{background:#a04f22;}
+
   /* ---------- SIDE PANELS (reel script + bio) ---------- */
   #script-backdrop, #bio-backdrop{
     position:fixed;inset:0;background:rgba(36,38,31,0.35);
@@ -670,6 +695,12 @@
 
   <div id="error-toast"></div>
 
+  <div id="product-nudge">
+    <button type="button" id="product-nudge-close" title="סגירה">✕</button>
+    <div id="product-nudge-text">☀️ בא לך לעשות כסף מהרעיונות האלו?</div>
+    <button type="button" id="product-nudge-cta">בואו נראה איך 💡</button>
+  </div>
+
   <div id="script-backdrop"></div>
   <div id="script-panel">
     <div class="script-panel-header">
@@ -747,6 +778,19 @@
   // Deploy the small proxy server (see the Cloudflare Worker guide provided
   // alongside this file) and paste its URL here — everything else just works.
   const API_ENDPOINT = "https://sun-of-ideas-proxy.eyalmad.workers.dev/";
+
+  // Real per-user history is saved on your own WordPress site (tied to the
+  // logged-in account), via a signed token WordPress attaches to this page's
+  // URL when it embeds the tool. Without a token (e.g. testing this file on
+  // its own), the tool falls back to this browser's local storage only.
+  const WP_API_BASE = "https://ideabooster.app/wp-json/sunideas/v1";
+  const urlParams = new URLSearchParams(window.location.search);
+  const AUTH = {
+    uid: urlParams.get('uid') || '',
+    exp: urlParams.get('exp') || '',
+    tok: urlParams.get('tok') || ''
+  };
+  const HAS_ACCOUNT = !!(AUTH.uid && AUTH.exp && AUTH.tok);
 
   const PALETTE = [
     {stroke:'#1E6E4C', tint:'#EAF6EF'},
@@ -854,16 +898,42 @@
   }
 
   // ---------- Persistence ----------
+  let _persistTimer = null;
   async function persist(){
-    try{
-      await window.storage.set(STORAGE_KEY, JSON.stringify(workspace), false);
-    }catch(e){ /* non-fatal */ }
+    // Debounce: rapid mutations (e.g. dragging) collapse into one save shortly after things settle.
+    clearTimeout(_persistTimer);
+    _persistTimer = setTimeout(_persistNow, 800);
+  }
+  async function _persistNow(){
+    const json = JSON.stringify(workspace);
+    if(HAS_ACCOUNT){
+      try{
+        await fetch(WP_API_BASE + '/save-workspace', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ uid: AUTH.uid, exp: AUTH.exp, tok: AUTH.tok, data: json })
+        });
+      }catch(e){ /* non-fatal — best effort save */ }
+    } else {
+      try{ localStorage.setItem('sunideas:workspace', json); }catch(e){ /* non-fatal */ }
+    }
   }
   async function restore(){
     try{
-      const res = await window.storage.get(STORAGE_KEY);
-      if(res && res.value){
-        const parsed = JSON.parse(res.value);
+      let raw = null;
+      if(HAS_ACCOUNT){
+        const url = WP_API_BASE + '/load-workspace?uid=' + encodeURIComponent(AUTH.uid)
+          + '&exp=' + encodeURIComponent(AUTH.exp) + '&tok=' + encodeURIComponent(AUTH.tok);
+        const res = await fetch(url);
+        if(res.ok){
+          const body = await res.json();
+          raw = body && body.data ? body.data : null;
+        }
+      } else {
+        raw = localStorage.getItem('sunideas:workspace');
+      }
+      if(raw){
+        const parsed = JSON.parse(raw);
         if(parsed && parsed.tabs && parsed.order && parsed.order.length){
           workspace = parsed;
           if(!workspace.viewMode) workspace.viewMode = 'map';
@@ -2125,11 +2195,25 @@ ${excludeLine}
     const count = state.expandedNodeIds ? Object.keys(state.expandedNodeIds).length : 0;
     if(count >= 3 && !state.productPopupAutoShown){
       state.productPopupAutoShown = true;
-      openProductPopup();
+      showProductNudge();
     } else {
       refreshViews();
     }
   }
+
+  const productNudgeEl = document.getElementById('product-nudge');
+  function showProductNudge(){
+    productNudgeEl.style.display = 'flex';
+    refreshViews();
+  }
+  function hideProductNudge(){
+    productNudgeEl.style.display = 'none';
+  }
+  document.getElementById('product-nudge-close').addEventListener('click', hideProductNudge);
+  document.getElementById('product-nudge-cta').addEventListener('click', ()=>{
+    hideProductNudge();
+    openProductPopup();
+  });
 
   function ensureProductObject(){
     if(!state.productOffer) state.productOffer = { status:'idle', teaser:null, full:null, message:'', productType:null, landingPage:null };
@@ -2153,6 +2237,7 @@ ${excludeLine}
   async function openProductPopup(){
     closeScriptPanel();
     closeBioPanel();
+    hideProductNudge();
     const po = ensureProductObject();
     productModalOpen = true;
     productTopicTitle.textContent = state.nodes[state.rootId] ? state.nodes[state.rootId].text : '';
