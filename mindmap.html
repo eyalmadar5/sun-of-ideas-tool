@@ -2154,7 +2154,7 @@ ${excludeLine}
   async function tpStartCamera(){
     try{
       tpCameraStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 1280 } },
         audio: true
       });
       tpCameraVideo.srcObject = tpCameraStream;
@@ -2223,11 +2223,17 @@ ${excludeLine}
         }
         tpCurrentCaption = text.trim();
       };
-      tpRecognition.onerror = (e)=> console.warn('Speech recognition error:', e.error);
+      tpRecognition.onerror = (e)=>{
+        console.warn('Speech recognition error:', e.error);
+        showError('כתוביות: זיהוי הדיבור נתקל בשגיאה (' + e.error + ') - ההקלטה ממשיכה בלי כתוביות.');
+      };
       tpRecognition.onend = ()=>{
         if(tpRecording){ try{ tpRecognition.start(); }catch(e){} } // חלק מהדפדפנים עוצרים לבד אחרי זמן - מפעילים שוב
       };
-      try{ tpRecognition.start(); }catch(e){ console.warn('Could not start speech recognition:', e); }
+      try{ tpRecognition.start(); }catch(e){
+        console.warn('Could not start speech recognition:', e);
+        showError('לא הצלחתי להפעיל זיהוי דיבור לכתוביות - ההקלטה ממשיכה בלעדיהן.');
+      }
     } else {
       showError('זיהוי דיבור אוטומטי לכתוביות לא נתמך בדפדפן הזה - ההקלטה תמשיך בלי כתוביות.');
     }
@@ -2237,7 +2243,10 @@ ${excludeLine}
     //     ומעליו שורת הכתובית הנוכחית מזיהוי הדיבור. אין כאן שום save()/restore() -
     //     בכוונה, כדי למנוע את הבאג הקודם של חוסר איזון שהקפיא את התמונה. ---
     const canvas = document.createElement('canvas');
-    canvas.width = 1280; canvas.height = 720;
+    // חשוב: משתמשים במידות האמיתיות של הזרם (לא ערך קבוע) - כך שריל מצולם
+    // לאורך (פורטרט) יוצא לאורך, ולא נמתח/נדחס לרוחב בטעות.
+    canvas.width = tpCameraVideo.videoWidth || 720;
+    canvas.height = tpCameraVideo.videoHeight || 1280;
     const ctx = canvas.getContext('2d');
 
     function drawFrame(){
