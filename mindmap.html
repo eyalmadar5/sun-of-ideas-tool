@@ -317,6 +317,7 @@
   #tp-record-toggle.recording{background:#c0392b;border-color:#c0392b;animation:tp-rec-pulse 1.2s infinite;}
   @keyframes tp-rec-pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
   #tp-record-timer{font-family:'Heebo',sans-serif;font-size:13px;color:#ff6b5b;font-weight:700;}
+  #tp-caption-status{font-family:'Heebo',sans-serif;font-size:12px;color:#FFD873;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #tp-camera-video{
     position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     z-index:0;display:none;transform:scaleX(-1);
@@ -797,6 +798,7 @@
       <button type="button" id="tp-camera-toggle">🎥 הפעלת מצלמה</button>
       <button type="button" id="tp-record-toggle" style="display:none;">⏺️ הקלטה</button>
       <span id="tp-record-timer" style="display:none;"></span>
+      <span id="tp-caption-status" style="display:none;"></span>
       <button type="button" id="tp-playpause">⏸️ עצירה</button>
       <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
       <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
@@ -2210,48 +2212,63 @@ ${excludeLine}
 
     // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו
     //     בדיוק את מה שנאמר בפועל (כולל אם מוסיפים/מורידים מילים מהתסריט) ---
+    const capStatusEl = document.getElementById('tp-caption-status');
+    capStatusEl.style.display = 'inline';
+    capStatusEl.textContent = '💬 כתוביות: מאתחל...';
     const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
     if(SpeechRecognitionCtor){
       tpRecognition = new SpeechRecognitionCtor();
       tpRecognition.lang = 'he-IL';
       tpRecognition.continuous = true;
       tpRecognition.interimResults = true;
+      tpRecognition.onstart = ()=>{ capStatusEl.textContent = '💬 כתוביות: מאזין...'; };
       tpRecognition.onresult = (event)=>{
         let text = '';
         for(let i = event.resultIndex; i < event.results.length; i++){
           text += event.results[i][0].transcript;
         }
         tpCurrentCaption = text.trim();
+        capStatusEl.textContent = '💬 ' + tpCurrentCaption.slice(-40);
       };
       tpRecognition.onerror = (e)=>{
         console.warn('Speech recognition error:', e.error);
-        showError('כתוביות: זיהוי הדיבור נתקל בשגיאה (' + e.error + ') - ההקלטה ממשיכה בלי כתוביות.');
+        capStatusEl.textContent = '⚠️ כתוביות: שגיאה (' + e.error + ')';
       };
       tpRecognition.onend = ()=>{
         if(tpRecording){ try{ tpRecognition.start(); }catch(e){} } // חלק מהדפדפנים עוצרים לבד אחרי זמן - מפעילים שוב
       };
       try{ tpRecognition.start(); }catch(e){
         console.warn('Could not start speech recognition:', e);
-        showError('לא הצלחתי להפעיל זיהוי דיבור לכתוביות - ההקלטה ממשיכה בלעדיהן.');
+        capStatusEl.textContent = '⚠️ כתוביות: לא הופעלו';
       }
     } else {
-      showError('זיהוי דיבור אוטומטי לכתוביות לא נתמך בדפדפן הזה - ההקלטה תמשיך בלי כתוביות.');
+      capStatusEl.textContent = '⚠️ כתוביות: לא נתמך בדפדפן זה';
     }
 
-    // --- ציור פריים-אחר-פריים על קנבס: הווידאו כמו שהוא (בלי שום היפוך - זה בדיוק
-    //     האוריינטציה הנכונה לפלט, ההיפוך שרואים בתצוגה הוא רק CSS על התצוגה החיה),
-    //     ומעליו שורת הכתובית הנוכחית מזיהוי הדיבור. אין כאן שום save()/restore() -
-    //     בכוונה, כדי למנוע את הבאג הקודם של חוסר איזון שהקפיא את התמונה. ---
+    // --- ציור פריים-אחר-פריים על קנבס. חשוב: בטלפונים רבים המצלמה הקדמית
+    //     "חושבת" ברוחב גם כשמחזיקים לאורך (התצוגה החיה מסתובבת ויזואלית
+    //     ע"י הדפדפן, אבל ה-buffer הגולמי שקנבס קורא נשאר ברוחב) - בודקים
+    //     את זה ומסובבים את הציור ב-90 מעלות במקרה כזה, כדי שהפלט תמיד
+    //     יצא לאורך כמו ריל אמיתי. ---
     const canvas = document.createElement('canvas');
-    // חשוב: משתמשים במידות האמיתיות של הזרם (לא ערך קבוע) - כך שריל מצולם
-    // לאורך (פורטרט) יוצא לאורך, ולא נמתח/נדחס לרוחב בטעות.
-    canvas.width = tpCameraVideo.videoWidth || 720;
-    canvas.height = tpCameraVideo.videoHeight || 1280;
+    const rawW = tpCameraVideo.videoWidth || 720;
+    const rawH = tpCameraVideo.videoHeight || 1280;
+    const needsRotation = rawW > rawH;
+    canvas.width = needsRotation ? rawH : rawW;
+    canvas.height = needsRotation ? rawW : rawH;
     const ctx = canvas.getContext('2d');
 
     function drawFrame(){
       if(!tpRecording) return;
-      ctx.drawImage(tpCameraVideo, 0, 0, canvas.width, canvas.height);
+      if(needsRotation){
+        ctx.save();
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.rotate(Math.PI/2);
+        ctx.drawImage(tpCameraVideo, -rawW/2, -rawH/2, rawW, rawH);
+        ctx.restore();
+      } else {
+        ctx.drawImage(tpCameraVideo, 0, 0, canvas.width, canvas.height);
+      }
       if(tpCurrentCaption){
         ctx.font = '700 30px Rubik, Arial, sans-serif';
         ctx.textAlign = 'center';
@@ -2312,6 +2329,7 @@ ${excludeLine}
     if(tpMediaRecorder && tpMediaRecorder.state !== 'inactive') tpMediaRecorder.stop();
     clearInterval(tpRecordTimerInterval);
     tpRecordTimer.style.display = 'none';
+    document.getElementById('tp-caption-status').style.display = 'none';
     tpRecordToggle.textContent = '⏺️ הקלטה';
     tpRecordToggle.classList.remove('recording');
   }
