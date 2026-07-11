@@ -537,7 +537,7 @@ function sunideas_render_fullbleed_page($iframe_url){
 </style>
 </head>
 <body>
-  <iframe src="<?php echo esc_url($iframe_url); ?>" allow="clipboard-write"></iframe>
+  <iframe src="<?php echo esc_url($iframe_url); ?>" allow="clipboard-write; camera; microphone" allowfullscreen></iframe>
 </body>
 </html>
 <?php
