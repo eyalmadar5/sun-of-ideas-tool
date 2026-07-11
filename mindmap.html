@@ -296,11 +296,12 @@
   /* ---------- TELEPROMPTER ---------- */
   #teleprompter-overlay{
     position:fixed;inset:0;z-index:200;
-    background:rgba(10,10,10,0.85);
+    background:#0a0a0a;
     display:none;flex-direction:column;
   }
   #teleprompter-overlay.open{display:flex;}
   #teleprompter-controls{
+    position:relative;z-index:4;
     flex:0 0 auto;display:flex;flex-wrap:wrap;align-items:center;gap:16px;
     padding:12px 20px;background:rgba(0,0,0,0.75);
     font-family:'Heebo',sans-serif;font-size:12.5px;color:#fff;
@@ -313,9 +314,22 @@
   }
   #teleprompter-controls button:hover{background:rgba(255,255,255,0.22);}
   #teleprompter-controls button.active{background:var(--sun-deep);border-color:var(--sun-deep);}
+  #tp-record-toggle.recording{background:#c0392b;border-color:#c0392b;animation:tp-rec-pulse 1.2s infinite;}
+  @keyframes tp-rec-pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+  #tp-record-timer{font-family:'Heebo',sans-serif;font-size:13px;color:#ff6b5b;font-weight:700;}
+  #tp-camera-video{
+    position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+    z-index:0;display:none;transform:scaleX(-1);
+  }
+  #tp-scrim{
+    position:absolute;inset:0;z-index:1;
+    background:rgba(10,10,10,0.85);
+    pointer-events:none;
+  }
   #teleprompter-viewport{
+    position:relative;z-index:2;
     flex:1 1 auto;overflow-y:auto;overflow-x:hidden;
-    scrollbar-width:none;
+    scrollbar-width:none;background:transparent;
   }
   #teleprompter-viewport::-webkit-scrollbar{display:none;}
   #teleprompter-text{
@@ -324,6 +338,7 @@
     padding:60vh 8vw 90vh;
     white-space:pre-wrap;
     transition:font-size .15s ease;
+    text-shadow:0 2px 12px rgba(0,0,0,0.8);
   }
   #teleprompter-text .tp-cta{color:#FFD873;}
   #teleprompter-overlay.mirrored #teleprompter-text{transform:scaleX(-1);}
@@ -779,12 +794,17 @@
   <div id="teleprompter-overlay">
     <div id="teleprompter-controls">
       <button type="button" id="tp-close" title="סגירה">✕ סגירה</button>
+      <button type="button" id="tp-camera-toggle">🎥 הפעלת מצלמה</button>
+      <button type="button" id="tp-record-toggle" style="display:none;">⏺️ הקלטה</button>
+      <span id="tp-record-timer" style="display:none;"></span>
       <button type="button" id="tp-playpause">⏸️ עצירה</button>
       <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
       <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
       <label>שקיפות רקע <input type="range" id="tp-opacity" min="20" max="100" value="85"></label>
       <button type="button" id="tp-mirror">🪞 הפוך (מראה)</button>
     </div>
+    <video id="tp-camera-video" autoplay muted playsinline></video>
+    <div id="tp-scrim"></div>
     <div id="teleprompter-viewport">
       <div id="teleprompter-text"></div>
     </div>
@@ -2046,9 +2066,19 @@ ${excludeLine}
   const tpFontSize = document.getElementById('tp-fontsize');
   const tpOpacity = document.getElementById('tp-opacity');
   const tpMirror = document.getElementById('tp-mirror');
+  const tpCameraVideo = document.getElementById('tp-camera-video');
+  const tpScrim = document.getElementById('tp-scrim');
+  const tpCameraToggle = document.getElementById('tp-camera-toggle');
+  const tpRecordToggle = document.getElementById('tp-record-toggle');
+  const tpRecordTimer = document.getElementById('tp-record-timer');
   let tpPlaying = false;
   let tpRafId = null;
   let tpMirrored = false;
+  let tpCameraStream = null;
+  let tpMediaRecorder = null;
+  let tpRecordedChunks = [];
+  let tpRecordStartTime = null;
+  let tpRecordTimerInterval = null;
 
   scriptTeleprompterBtn.addEventListener('click', ()=>{
     if(!scriptPanelNodeId) return;
@@ -2101,18 +2131,151 @@ ${excludeLine}
   tpPlayPause.addEventListener('click', ()=>{ tpPlaying ? tpStop() : tpStart(); });
   tpClose.addEventListener('click', ()=>{
     tpStop();
+    if(tpMediaRecorder && tpMediaRecorder.state !== 'inactive') tpStopRecording();
+    tpStopCamera();
     tpOverlay.classList.remove('open');
   });
   tpFontSize.addEventListener('input', ()=>{
     tpTextEl.style.fontSize = tpFontSize.value + 'px';
   });
   tpOpacity.addEventListener('input', ()=>{
-    tpOverlay.style.background = 'rgba(10,10,10,' + (Number(tpOpacity.value)/100) + ')';
+    tpScrim.style.background = 'rgba(10,10,10,' + (Number(tpOpacity.value)/100) + ')';
   });
   tpMirror.addEventListener('click', ()=>{
     tpMirrored = !tpMirrored;
     tpOverlay.classList.toggle('mirrored', tpMirrored);
     tpMirror.classList.toggle('active', tpMirrored);
+  });
+
+  // ---------- Teleprompter: live camera + in-browser recording ----------
+  // Note: no website can draw over a phone's separate native camera app —
+  // this brings the camera into the tool itself instead, so the prompter
+  // text and your own live video sit together, and can be recorded here.
+  async function tpStartCamera(){
+    try{
+      tpCameraStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: true
+      });
+      tpCameraVideo.srcObject = tpCameraStream;
+      tpCameraVideo.style.display = 'block';
+      tpCameraToggle.textContent = '🎥 כיבוי מצלמה';
+      tpCameraToggle.classList.add('active');
+      tpRecordToggle.style.display = 'inline-block';
+    }catch(err){
+      console.error('Camera access failed:', err);
+      showError('לא הצלחתי לקבל גישה למצלמה (' + (err && err.message ? err.message : 'שגיאה') + '). ודאו שאישרתם הרשאת מצלמה לדפדפן.');
+    }
+  }
+  function tpStopCamera(){
+    if(tpCameraStream){
+      tpCameraStream.getTracks().forEach(t=>t.stop());
+      tpCameraStream = null;
+    }
+    tpCameraVideo.srcObject = null;
+    tpCameraVideo.style.display = 'none';
+    tpCameraToggle.textContent = '🎥 הפעלת מצלמה';
+    tpCameraToggle.classList.remove('active');
+    tpRecordToggle.style.display = 'none';
+  }
+  tpCameraToggle.addEventListener('click', ()=>{
+    tpCameraStream ? tpStopCamera() : tpStartCamera();
+  });
+
+  function tpFormatTime(sec){
+    const m = Math.floor(sec/60), s = Math.floor(sec%60);
+    return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+  }
+
+  function tpStartRecording(){
+    if(!tpCameraStream) return;
+    // Composite the camera video + the on-screen prompter text into a single
+    // canvas each frame, so the exported video looks exactly like what you see.
+    const canvas = document.createElement('canvas');
+    canvas.width = 1280; canvas.height = 720;
+    const ctx = canvas.getContext('2d');
+    let compositing = true;
+
+    function drawFrame(){
+      if(!compositing) return;
+      ctx.save();
+      ctx.scale(-1, 1); // mirror to match the selfie preview
+      ctx.drawImage(tpCameraVideo, -canvas.width, 0, canvas.width, canvas.height);
+      ctx.restore();
+      ctx.fillStyle = tpScrim.style.background || 'rgba(10,10,10,0.85)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // מציגים רק שורה-שתיים נוכחיות מהטקסט (לא כל הגלילה) כדי שהווידאו יהיה קריא
+      const visibleText = tpTextEl.textContent.trim().slice(0, 220);
+      ctx.fillStyle = '#fff';
+      ctx.font = '700 34px Rubik, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 10;
+      wrapCanvasText(ctx, visibleText, canvas.width/2, canvas.height/2, canvas.width*0.82, 42);
+      ctx.restore();
+      requestAnimationFrame(drawFrame);
+    }
+    function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+      const words = text.split(' ');
+      let lines = [], line = '';
+      words.forEach(w=>{
+        const test = line ? line + ' ' + w : w;
+        if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+        else line = test;
+      });
+      if(line) lines.push(line);
+      lines = lines.slice(0, 4);
+      const startY = y - ((lines.length-1)*lineHeight)/2;
+      lines.forEach((l,i)=> ctx.fillText(l, x, startY + i*lineHeight));
+    }
+    drawFrame();
+
+    const canvasStream = canvas.captureStream(30);
+    const audioTrack = tpCameraStream.getAudioTracks()[0];
+    if(audioTrack) canvasStream.addTrack(audioTrack);
+
+    tpRecordedChunks = [];
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
+    tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
+    tpMediaRecorder.onstop = ()=>{
+      compositing = false;
+      const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'reel-' + Date.now() + '.webm';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(()=> URL.revokeObjectURL(url), 5000);
+    };
+    tpMediaRecorder.start();
+
+    tpRecordStartTime = Date.now();
+    tpRecordTimer.style.display = 'inline';
+    tpRecordTimerInterval = setInterval(()=>{
+      tpRecordTimer.textContent = '⏺ ' + tpFormatTime((Date.now()-tpRecordStartTime)/1000);
+    }, 500);
+
+    tpRecordToggle.textContent = '⏹️ עצירת הקלטה';
+    tpRecordToggle.classList.add('recording');
+    tpStart(); // גם מתחילים לגלול אוטומטית עם תחילת ההקלטה
+  }
+  function tpStopRecording(){
+    if(tpMediaRecorder && tpMediaRecorder.state !== 'inactive') tpMediaRecorder.stop();
+    clearInterval(tpRecordTimerInterval);
+    tpRecordTimer.style.display = 'none';
+    tpRecordToggle.textContent = '⏺️ הקלטה';
+    tpRecordToggle.classList.remove('recording');
+  }
+  tpRecordToggle.addEventListener('click', ()=>{
+    if(tpMediaRecorder && tpMediaRecorder.state === 'recording'){
+      tpStopRecording();
+    } else {
+      tpStartRecording();
+    }
   });
 
   // ---------- Revise reel script with a free-text instruction ----------
