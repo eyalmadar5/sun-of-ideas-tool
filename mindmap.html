@@ -2189,58 +2189,13 @@ ${excludeLine}
 
   function tpStartRecording(){
     if(!tpCameraStream) return;
-    // Composite the camera video + the on-screen prompter text into a single
-    // canvas each frame, so the exported video looks exactly like what you see.
-    const canvas = document.createElement('canvas');
-    canvas.width = 1280; canvas.height = 720;
-    const ctx = canvas.getContext('2d');
-    let compositing = true;
-
-    function drawFrame(){
-      if(!compositing) return;
-      ctx.save();
-      ctx.scale(-1, 1); // mirror to match the selfie preview
-      ctx.drawImage(tpCameraVideo, -canvas.width, 0, canvas.width, canvas.height);
-      ctx.restore();
-      ctx.fillStyle = tpScrim.style.background || 'rgba(10,10,10,0.85)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      // מציגים רק שורה-שתיים נוכחיות מהטקסט (לא כל הגלילה) כדי שהווידאו יהיה קריא
-      const visibleText = tpTextEl.textContent.trim().slice(0, 220);
-      ctx.fillStyle = '#fff';
-      ctx.font = '700 34px Rubik, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.shadowColor = 'rgba(0,0,0,0.8)';
-      ctx.shadowBlur = 10;
-      wrapCanvasText(ctx, visibleText, canvas.width/2, canvas.height/2, canvas.width*0.82, 42);
-      ctx.restore();
-      requestAnimationFrame(drawFrame);
-    }
-    function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
-      const words = text.split(' ');
-      let lines = [], line = '';
-      words.forEach(w=>{
-        const test = line ? line + ' ' + w : w;
-        if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
-        else line = test;
-      });
-      if(line) lines.push(line);
-      lines = lines.slice(0, 4);
-      const startY = y - ((lines.length-1)*lineHeight)/2;
-      lines.forEach((l,i)=> ctx.fillText(l, x, startY + i*lineHeight));
-    }
-    drawFrame();
-
-    const canvasStream = canvas.captureStream(30);
-    const audioTrack = tpCameraStream.getAudioTracks()[0];
-    if(audioTrack) canvasStream.addTrack(audioTrack);
-
+    // Record the camera feed exactly as-is (video + mic) — the prompter text is only
+    // a reading aid shown live on screen, it should never end up baked into the file.
     tpRecordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
+    tpMediaRecorder = new MediaRecorder(tpCameraStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = ()=>{
-      compositing = false;
       const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
