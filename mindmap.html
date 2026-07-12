@@ -2263,7 +2263,17 @@ ${excludeLine}
     ctx.save();
     ctx.translate(canvasW/2, canvasH/2);
     ctx.rotate(rotationDeg * Math.PI / 180);
-    ctx.drawImage(tpCameraVideo, -rawW/2, -rawH/2, rawW, rawH);
+    // אחרי הסיבוב, מערכת הצירים עצמה מסתובבת - אז "השטח הזמין" לצייר בו מתחלף
+    // בין רוחב לגובה אם הסיבוב הוא 90/270.
+    const rotated90 = (rotationDeg === 90 || rotationDeg === 270);
+    const targetW = rotated90 ? canvasH : canvasW;
+    const targetH = rotated90 ? canvasW : canvasH;
+    // ממלאים את כל השטח בלי שוליים שחורים (כמו מצלמת סלפי רגילה) - במקום לצייר
+    // בגודל הגולמי שמשאיר רווחים ריקים אם היחס בין הצלעות לא תואם בול.
+    const scale = Math.max(targetW / rawW, targetH / rawH);
+    const drawW = rawW * scale;
+    const drawH = rawH * scale;
+    ctx.drawImage(tpCameraVideo, -drawW/2, -drawH/2, drawW, drawH);
     ctx.restore();
   }
   function tpCanvasDimsForRotation(rawW, rawH, rotationDeg){
