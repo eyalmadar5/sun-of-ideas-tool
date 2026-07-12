@@ -2243,11 +2243,11 @@ ${excludeLine}
       angle = Math.abs(window.orientation);
     }
     const deviceHeldUpright = (angle === 0 || angle === 180); // אחזקה "רגילה" (פורטרט)
-    // כשמחזיקים רגיל אבל ה-buffer הגולמי יוצא רחב - צריך סיבוב 90 מעלות כדי לצאת לאורך.
-    // כשמסובבים לרוחב, ההתנהגות הפוכה (כפי שנצפה בפועל במכשיר הזה).
+    // אושר בבדיקה שיטתית בפועל: כשמחזיקים רגיל וה-buffer הגולמי יוצא רחב,
+    // הסיבוב הנכון הוא 270 מעלות (לא 90, כפי שניחשנו קודם).
     tpRotationDeg = deviceHeldUpright
-      ? (bufferIsLandscape ? 90 : 0)
-      : (bufferIsLandscape ? 0 : 90);
+      ? (bufferIsLandscape ? 270 : 0)
+      : (bufferIsLandscape ? 0 : 270);
   }
   function tpOnDeviceOrientationChange(){
     if(!tpCameraStream) return;
@@ -2586,8 +2586,6 @@ ${excludeLine}
     canvas.height = dims.h;
     const ctx = canvas.getContext('2d');
 
-    // 🔧 אבחון זמני - נסיר את זה ברגע שנפתור את בעיית האוריינטציה
-    tpShowErrorBox('אבחון: rawW=' + rawW + ' rawH=' + rawH + ' תוקן=' + tpRotationDeg + '° | היפוך=' + tpCameraMirror + ' | קנבס=' + canvas.width + 'x' + canvas.height);
 
     function drawFrame(){
       if(!tpRecording) return;
