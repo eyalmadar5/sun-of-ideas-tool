@@ -65,6 +65,13 @@
 
   #status-line{flex:1 1 auto;display:none;align-items:center;justify-content:flex-end;gap:10px;}
 
+  #lang-toggle-btn{
+    flex:0 0 auto;height:36px;padding:0 12px;border-radius:18px;
+    background:var(--paper-2);border:1.5px solid var(--line);cursor:pointer;
+    font-family:'Heebo',sans-serif;font-weight:700;font-size:12.5px;color:var(--ink);
+  }
+  #lang-toggle-btn:hover{background:var(--card);}
+
   #profile-btn{
     flex:0 0 auto;width:36px;height:36px;border-radius:50%;
     background:var(--paper-2);border:1.5px solid var(--line);cursor:pointer;
@@ -795,12 +802,13 @@
 <div id="app">
   <div id="topbar">
     <div id="brand">
-      <span class="eyebrow">מפת רעיונות לתוכן</span>
+      <span class="eyebrow" id="brand-eyebrow">מפת רעיונות לתוכן</span>
       <h1><span class="sun-mark">☀</span> שמש הרעיונות</h1>
     </div>
     <div id="status-line">
       <span class="root-chip" id="root-chip"></span>
       <button class="btn ghost" id="view-toggle" type="button">הצג כרשימה</button>
+      <button id="lang-toggle-btn" type="button" title="Switch language">EN</button>
       <button id="profile-btn" type="button" title="החשבון שלי">👤</button>
     </div>
   </div>
@@ -818,8 +826,8 @@
 
   <div id="main-area">
     <div id="empty-state">
-      <h2>הכניסו נושא אחד. קבלו זרם רעיונות אינסופי.</h2>
-      <p>הזינו את נושא הליבה של העסק שלכם. מכל רעיון שיוצג, אפשר ללחוץ על "עוד רעיונות" ולהמשיך להסתעף — כל הצעה נבדקת מול מגמות ותוכן מתחרים באינטרנט לפני שהיא מוצגת.</p>
+      <h2 id="empty-title">הכניסו נושא אחד. קבלו זרם רעיונות אינסופי.</h2>
+      <p id="empty-body">הזינו את נושא הליבה של העסק שלכם. מכל רעיון שיוצג, אפשר ללחוץ על "עוד רעיונות" ולהמשיך להסתעף — כל הצעה נבדקת מול מגמות ותוכן מתחרים באינטרנט לפני שהיא מוצגת.</p>
       <div id="topic-form">
         <input id="topic-input" type="text" placeholder="הנושא המרכזי, למשל: כושר לנשים לאחר הריון" maxlength="60"/>
         <button class="btn" id="start-btn" type="button">התחילו למפות</button>
@@ -1013,6 +1021,48 @@
     {stroke:'#3C4F9E', tint:'#EAEDF9'},
     {stroke:'#97741A', tint:'#FBF3DE'}
   ];
+
+  // ---------- i18n (Hebrew / English toggle) ----------
+  let LANG = localStorage.getItem('sunideas:lang') || 'he';
+
+  const I18N = {
+    he: {
+      eyebrow_brand: 'מפת רעיונות לתוכן',
+      view_map: 'הצג כמפה',
+      view_list: 'הצג כרשימה',
+      new_topic_tab: '+ תחום חדש',
+      empty_title: 'הכניסו נושא אחד. קבלו זרם רעיונות אינסופי.',
+      empty_body: 'הזינו את נושא הליבה של העסק שלכם. מכל רעיון שיוצג, אפשר ללחוץ על "עוד רעיונות" ולהמשיך להסתעף — כל הצעה נבדקת מול מגמות ותוכן מתחרים באינטרנט לפני שהיא מוצגת.',
+      topic_placeholder: 'הנושא המרכזי, למשל: כושר לנשים לאחר הריון',
+      start_btn: 'התחילו למפות',
+      more_ideas: '+ עוד רעיונות',
+      reel_script_btn: '🎬 תסריט לריל',
+      bio_btn: '✍️ ביו ממיר',
+      product_idea_btn: '💡 רעיון למוצר',
+      profile_title: 'החשבון שלי',
+      lang_toggle_label: 'EN',
+      whats_app_label: 'ייעוץ ושאלות בוואטסאפ',
+    },
+    en: {
+      eyebrow_brand: 'Content idea map',
+      view_map: 'Show as map',
+      view_list: 'Show as list',
+      new_topic_tab: '+ New topic',
+      empty_title: 'Enter one topic. Get an endless stream of ideas.',
+      empty_body: 'Enter your core business topic. From every idea shown, click "More ideas" to keep branching out — every suggestion is checked against real trends and competitor content online before it\'s shown.',
+      topic_placeholder: 'Your core topic, e.g.: postpartum fitness for women',
+      start_btn: 'Start mapping',
+      more_ideas: '+ More ideas',
+      reel_script_btn: '🎬 Reel script',
+      bio_btn: '✍️ Bio converter',
+      product_idea_btn: '💡 Product idea',
+      profile_title: 'My account',
+      lang_toggle_label: 'עב',
+      whats_app_label: 'Questions? Chat on WhatsApp',
+    }
+  };
+  function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.he[key] || key; }
+  function isEnglish(){ return LANG === 'en'; }
 
   function newTabState(){
     return {
@@ -1305,7 +1355,7 @@
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'more-btn' + (node.loading ? ' loading' : '') + (node.error ? ' error' : '');
-      btn.textContent = node.loading ? '' : (node.error ? '⚠ שגיאה — לחצו לניסיון חוזר' : '+ עוד רעיונות');
+      btn.textContent = node.loading ? '' : (node.error ? (isEnglish() ? '⚠ Error — click to retry' : '⚠ שגיאה — לחצו לניסיון חוזר') : t('more_ideas'));
       if(node.loading){
         const dot = document.createElement('span');
         dot.className = 'dot';
@@ -1319,8 +1369,8 @@
       const scriptBtn = document.createElement('button');
       scriptBtn.type = 'button';
       scriptBtn.className = 'script-btn' + (scriptReady ? ' ready' : '');
-      scriptBtn.title = 'כתוב לי תסריט לריל ויראלי';
-      scriptBtn.textContent = scriptReady ? '🎬 תסריט מוכן' : '🎬 תסריט לריל';
+      scriptBtn.title = isEnglish() ? 'Write me a viral reel script' : 'כתוב לי תסריט לריל ויראלי';
+      scriptBtn.textContent = scriptReady ? (isEnglish() ? '🎬 Script ready' : '🎬 תסריט מוכן') : t('reel_script_btn');
       scriptBtn.addEventListener('click', ()=> openScriptPanel(node.id));
       actionsRow.appendChild(scriptBtn);
 
@@ -1330,7 +1380,7 @@
         bioBtn.type = 'button';
         bioBtn.className = 'script-btn bio-btn' + (bioReady ? ' ready' : '');
         bioBtn.title = 'כתוב לי ביו ממיר';
-        bioBtn.textContent = bioReady ? '✍️ ביו מוכן' : '✍️ ביו ממיר';
+        bioBtn.textContent = bioReady ? (isEnglish() ? '✍️ Bio ready' : '✍️ ביו מוכן') : t('bio_btn');
         bioBtn.addEventListener('click', ()=> openBioPanel());
         actionsRow.appendChild(bioBtn);
 
@@ -1341,7 +1391,7 @@
           productBtn.type = 'button';
           productBtn.className = 'script-btn product-btn' + (productReady ? ' ready' : '');
           productBtn.title = 'רעיון למוצר רווחי';
-          productBtn.textContent = productReady ? '💡 רעיון מוכן' : '💡 רעיון למוצר';
+          productBtn.textContent = productReady ? (isEnglish() ? '💡 Idea ready' : '💡 רעיון מוכן') : t('product_idea_btn');
           productBtn.addEventListener('click', ()=> openProductPopup());
           actionsRow.appendChild(productBtn);
         }
@@ -1468,7 +1518,7 @@
     const moreBtn = document.createElement('button');
     moreBtn.type = 'button';
     moreBtn.className = 'list-more-btn' + (node.loading ? ' loading' : '') + (node.error ? ' error' : '');
-    moreBtn.textContent = node.loading ? 'בודק אונליין…' : (node.error ? '⚠ נסה שוב' : '+ עוד רעיונות');
+    moreBtn.textContent = node.loading ? (isEnglish() ? 'Checking online…' : 'בודק אונליין…') : (node.error ? (isEnglish() ? '⚠ Try again' : '⚠ נסה שוב') : t('more_ideas'));
     moreBtn.addEventListener('click', ()=> generateChildren(node.id));
     row.appendChild(moreBtn);
 
@@ -1476,8 +1526,8 @@
     const scriptBtn = document.createElement('button');
     scriptBtn.type = 'button';
     scriptBtn.className = 'list-script-btn' + (scriptReady ? ' ready' : '');
-    scriptBtn.title = 'כתוב לי תסריט לריל ויראלי';
-    scriptBtn.textContent = scriptReady ? '🎬 תסריט מוכן' : '🎬 תסריט לריל';
+    scriptBtn.title = isEnglish() ? 'Write me a viral reel script' : 'כתוב לי תסריט לריל ויראלי';
+    scriptBtn.textContent = scriptReady ? (isEnglish() ? '🎬 Script ready' : '🎬 תסריט מוכן') : t('reel_script_btn');
     scriptBtn.addEventListener('click', ()=> openScriptPanel(node.id));
     row.appendChild(scriptBtn);
     if(isRoot){
@@ -1486,7 +1536,7 @@
       bioBtn.type = 'button';
       bioBtn.className = 'list-script-btn list-bio-btn' + (bioReady ? ' ready' : '');
       bioBtn.title = 'כתוב לי ביו ממיר';
-      bioBtn.textContent = bioReady ? '✍️ ביו מוכן' : '✍️ ביו ממיר';
+      bioBtn.textContent = bioReady ? (isEnglish() ? '✍️ Bio ready' : '✍️ ביו מוכן') : t('bio_btn');
       bioBtn.addEventListener('click', ()=> openBioPanel());
       row.appendChild(bioBtn);
 
@@ -1497,7 +1547,7 @@
         productBtn.type = 'button';
         productBtn.className = 'list-script-btn list-product-btn' + (productReady ? ' ready' : '');
         productBtn.title = 'רעיון למוצר רווחי';
-        productBtn.textContent = productReady ? '💡 רעיון מוכן' : '💡 רעיון למוצר';
+        productBtn.textContent = productReady ? (isEnglish() ? '💡 Idea ready' : '💡 רעיון מוכן') : t('product_idea_btn');
         productBtn.addEventListener('click', ()=> openProductPopup());
         row.appendChild(productBtn);
       }
@@ -1534,7 +1584,7 @@
     controls.style.display = (hasRoot && workspace.viewMode === 'map') ? 'flex' : 'none';
     listView.style.display = (hasRoot && workspace.viewMode === 'list') ? 'block' : 'none';
     if(hasRoot) rootChip.textContent = state.nodes[state.rootId].text;
-    viewToggleBtn.textContent = workspace.viewMode === 'list' ? 'הצג כמפה' : 'הצג כרשימה';
+    viewToggleBtn.textContent = workspace.viewMode === 'list' ? t('view_map') : t('view_list');
     if(!hasRoot) topicInput.value = '';
   }
 
@@ -1587,7 +1637,7 @@
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'tab-add';
-    addBtn.textContent = '+ תחום חדש';
+    addBtn.textContent = t('new_topic_tab');
     addBtn.addEventListener('click', ()=> createTab(true));
     tabsBar.appendChild(addBtn);
   }
@@ -1769,18 +1819,34 @@
 
   async function fetchIdeas(rootText, path, existing, count){
     const branchLine = path.length > 1 ? path.join(' > ') : path[0];
-    const excludeLine = existing.length
-      ? `רעיונות שכבר קיימים בענף הזה (אל תציעו שוב רעיונות זהים או קרובים מדי אליהם): ${existing.join(', ')}.`
-      : '';
-    const system = `אתם אסטרטג/ית תוכן שיווקי דיגיטלי, מומחה/ית ביצירת רעיונות תוכן לרשתות חברתיות ולבלוג עבור עסקים קטנים.
+    let system, user;
+    if(isEnglish()){
+      const excludeLine = existing.length
+        ? `Ideas that already exist in this branch (do not suggest identical or too-similar ideas again): ${existing.join(', ')}.`
+        : '';
+      system = `You are a digital marketing content strategist, expert at generating social media and blog content ideas for small businesses in the United States.
+Your job: propose new, focused, concrete, short content ideas (2 to 6 words in English) that naturally branch from the given path.
+If you can search online, check current content trends and competitor content in the US market for this topic, so suggestions are fresh and based on what's actually working right now for an American audience.
+Important: at least one or two of the ideas you propose must stem from real questions, pain points, fears, or concerns that this US audience is actually searching for online (forums, Facebook groups, comments, Google's "People also ask") - if you can search, check what people in this audience are really asking or worried about, and phrase it directly as a content topic that answers that exact question/concern.
+Reply ONLY with a JSON array of strings in English, no extra text before or after, no explanations, no markdown.`;
+      user = `Business core topic: ${rootText}
+Branch chain so far: ${branchLine}
+${excludeLine}
+Propose ${count} new content ideas to continue this branch, for a US audience. Return ONLY a JSON array of strings.`;
+    } else {
+      const excludeLine = existing.length
+        ? `רעיונות שכבר קיימים בענף הזה (אל תציעו שוב רעיונות זהים או קרובים מדי אליהם): ${existing.join(', ')}.`
+        : '';
+      system = `אתם אסטרטג/ית תוכן שיווקי דיגיטלי, מומחה/ית ביצירת רעיונות תוכן לרשתות חברתיות ולבלוג עבור עסקים קטנים.
 תפקידכם: להציע רעיונות תוכן חדשים, ממוקדים, קונקרטיים וקצרים (2 עד 6 מילים בעברית) שמסתעפים באופן טבעי מהענף שמתקבל.
 אם יש באפשרותכם לחפש באינטרנט, בדקו מגמות תוכן עדכניות ותוכן של מתחרים בנושא הרלוונטי, כדי שההצעות יהיו רעננות ומבוססות על מה שבאמת עובד היום.
 חשוב: לפחות אחד או שניים מהרעיונות שתציעו חייבים לנבוע משאלות, כאבים, פחדים או חששות אמיתיים שהקהל הרלוונטי מחפש ושואל אונליין (בפורומים, קבוצות פייסבוק, תגובות, שאלות נפוצות בגוגל) - אם יש באפשרותכם לחפש, בדקו מה אנשים מהקהל הזה באמת שואלים או חוששים מהם, ונסחו זאת ישירות כנושא תוכן שעונה על אותה שאלה/חשש (למשל בפורמט של השאלה עצמה, או זווית שמדברת ישירות לפחד הזה).
 השיבו אך ורק במבנה JSON array של מחרוזות בעברית, בלי טקסט נוסף לפני או אחרי, בלי הסברים, בלי markdown.`;
-    const user = `נושא הליבה של העסק: ${rootText}
+      user = `נושא הליבה של העסק: ${rootText}
 שרשרת הענף עד כה: ${branchLine}
 ${excludeLine}
 הציעו ${count} רעיונות תוכן חדשים להמשך הענף הזה. החזירו אך ורק JSON array של מחרוזות.`;
+    }
 
     try{
       const first = await callClaude(system, user, true);
@@ -1795,7 +1861,7 @@ ${excludeLine}
     const second = await callClaude(system, user, false);
     const list2 = parseIdeaList(second.text).slice(0, count);
     if(list2.length === 0){
-      throw new Error('לא הצלחתי לפרש את התשובה מהמודל');
+      throw new Error(isEnglish() ? 'Could not parse the model\'s response' : 'לא הצלחתי לפרש את התשובה מהמודל');
     }
     return { list: list2, usedSearch: false };
   }
@@ -4279,6 +4345,28 @@ ${JSON.stringify(bio.result)}
   window.addEventListener('resize', ()=>{ if(state.rootId && workspace.viewMode==='map') centerOnRoot(); });
 
   // ---------- Init ----------
+  // ---------- Language toggle ----------
+  function applyLanguage(){
+    const eng = isEnglish();
+    document.documentElement.setAttribute('dir', eng ? 'ltr' : 'rtl');
+    document.documentElement.setAttribute('lang', eng ? 'en' : 'he');
+    document.getElementById('brand-eyebrow').textContent = t('eyebrow_brand');
+    document.getElementById('empty-title').textContent = t('empty_title');
+    document.getElementById('empty-body').textContent = t('empty_body');
+    topicInput.placeholder = t('topic_placeholder');
+    document.getElementById('start-btn').textContent = t('start_btn');
+    document.getElementById('lang-toggle-btn').textContent = t('lang_toggle_label');
+    document.getElementById('profile-btn').title = t('profile_title');
+    updateChrome();
+    refreshViews();
+    renderTabs();
+  }
+  document.getElementById('lang-toggle-btn').addEventListener('click', ()=>{
+    LANG = isEnglish() ? 'he' : 'en';
+    localStorage.setItem('sunideas:lang', LANG);
+    applyLanguage();
+  });
+
   // ---------- Profile / account menu ----------
   const profileBtn = document.getElementById('profile-btn');
   const profileMenu = document.getElementById('profile-menu');
@@ -4309,9 +4397,11 @@ ${JSON.stringify(bio.result)}
   }
 
   (async function init(){
+    applyLanguage();
     const restored = await restore();
     if(!restored){
       createTab(true);
+      applyLanguage();
       return;
     }
     renderTabs();
