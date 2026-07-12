@@ -602,8 +602,16 @@ add_action('template_redirect', function () {
 
     $tool_iframe_url = get_option('sunideas_tool_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/mindmap.html');
     $token = sunideas_make_history_token(get_current_user_id());
+    $current_user = wp_get_current_user();
+    $sub_active = get_user_meta($current_user->ID, 'sunideas_subscription_active', true);
+    $sub_expiry = (int) get_user_meta($current_user->ID, 'sunideas_subscription_expiry', true);
     $sep = (strpos($tool_iframe_url, '?') === false) ? '?' : '&';
-    $tool_iframe_url .= $sep . 'uid=' . $token['uid'] . '&exp=' . $token['exp'] . '&tok=' . urlencode($token['tok']);
+    $tool_iframe_url .= $sep . 'uid=' . $token['uid'] . '&exp=' . $token['exp'] . '&tok=' . urlencode($token['tok'])
+        . '&uname=' . urlencode($current_user->display_name)
+        . '&uemail=' . urlencode($current_user->user_email)
+        . '&subactive=' . ($sub_active === '1' ? '1' : '0')
+        . '&subexpiry=' . $sub_expiry
+        . '&logouturl=' . urlencode(wp_logout_url(home_url()));
     sunideas_render_fullbleed_page($tool_iframe_url);
 });
 
@@ -626,7 +634,7 @@ function sunideas_create_cardcom_invoice($email, $full_name, $sum, $description)
         'body' => [
             'terminalnumber' => $terminal,
             'username'       => $username,
-            'InvoiceType'    => '3', // חשבונית מס/קבלה
+            'InvoiceType'    => '1', // חשבונית מס קבלה - אושר מול תמיכת קארדקום
             'InvoiceHead.CustName'   => $full_name ?: $email,
             'InvoiceHead.SendByEmail' => 'true',
             'InvoiceHead.Language'    => 'he',

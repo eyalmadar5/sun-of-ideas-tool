@@ -64,6 +64,27 @@
   .btn:disabled{opacity:.5;cursor:default;transform:none;box-shadow:none;}
 
   #status-line{flex:1 1 auto;display:none;align-items:center;justify-content:flex-end;gap:10px;}
+
+  #profile-btn{
+    flex:0 0 auto;width:36px;height:36px;border-radius:50%;
+    background:var(--paper-2);border:1.5px solid var(--line);cursor:pointer;
+    font-size:16px;display:flex;align-items:center;justify-content:center;
+  }
+  #profile-btn:hover{background:var(--card);}
+  #profile-menu{
+    position:fixed;top:56px;left:20px;z-index:60;
+    background:var(--card);border:1.5px solid var(--line);border-radius:14px;
+    box-shadow:var(--shadow);padding:14px 16px;min-width:220px;
+    display:none;flex-direction:column;gap:6px;
+    font-family:'Rubik',sans-serif;font-size:13.5px;color:var(--ink);
+  }
+  #profile-menu.open{display:flex;}
+  #profile-menu-name{font-weight:700;}
+  #profile-menu-email{color:var(--ink-soft);font-size:12px;word-break:break-all;}
+  #profile-menu-plan{font-size:12.5px;color:var(--sun-deep);font-weight:600;}
+  #profile-menu hr{border:none;border-top:1px solid var(--line);margin:6px 0;}
+  #profile-menu a{color:var(--ink);text-decoration:none;padding:6px 0;font-size:13px;}
+  #profile-menu a:hover{color:var(--sun-deep);}
   #status-line .root-chip{
     font-family:'Suez One',serif;font-size:16px;background:var(--card);
     border:1.5px solid var(--ink);border-radius:14px;padding:8px 16px;
@@ -788,7 +809,17 @@
     <div id="status-line">
       <span class="root-chip" id="root-chip"></span>
       <button class="btn ghost" id="view-toggle" type="button">הצג כרשימה</button>
+      <button id="profile-btn" type="button" title="החשבון שלי">👤</button>
     </div>
+  </div>
+
+  <div id="profile-menu">
+    <div id="profile-menu-name"></div>
+    <div id="profile-menu-email"></div>
+    <div id="profile-menu-plan"></div>
+    <hr>
+    <a id="profile-menu-contact" href="https://wa.me/972546660509" target="_blank" rel="noopener">💬 יצירת קשר / שאלות</a>
+    <a id="profile-menu-logout" href="#" target="_top">🚪 התנתקות</a>
   </div>
 
   <div id="tabs-bar"></div>
@@ -978,6 +1009,13 @@
     tok: urlParams.get('tok') || ''
   };
   const HAS_ACCOUNT = !!(AUTH.uid && AUTH.exp && AUTH.tok);
+  const PROFILE = {
+    name: urlParams.get('uname') || '',
+    email: urlParams.get('uemail') || '',
+    subActive: urlParams.get('subactive') === '1',
+    subExpiry: parseInt(urlParams.get('subexpiry') || '0', 10),
+    logoutUrl: urlParams.get('logouturl') || ''
+  };
 
   const PALETTE = [
     {stroke:'#1E6E4C', tint:'#EAF6EF'},
@@ -4253,6 +4291,35 @@ ${JSON.stringify(bio.result)}
   window.addEventListener('resize', ()=>{ if(state.rootId && workspace.viewMode==='map') centerOnRoot(); });
 
   // ---------- Init ----------
+  // ---------- Profile / account menu ----------
+  const profileBtn = document.getElementById('profile-btn');
+  const profileMenu = document.getElementById('profile-menu');
+  if(HAS_ACCOUNT && PROFILE.email){
+    profileBtn.style.display = 'flex';
+    document.getElementById('profile-menu-name').textContent = PROFILE.name || PROFILE.email;
+    document.getElementById('profile-menu-email').textContent = PROFILE.email;
+    const planEl = document.getElementById('profile-menu-plan');
+    if(PROFILE.subActive){
+      const expiryStr = PROFILE.subExpiry ? new Date(PROFILE.subExpiry * 1000).toLocaleDateString('he-IL') : '';
+      planEl.textContent = '✅ מנוי פעיל' + (expiryStr ? (' עד ' + expiryStr) : '');
+    } else {
+      planEl.textContent = '⚠️ אין מנוי פעיל כרגע';
+    }
+    const logoutLink = document.getElementById('profile-menu-logout');
+    if(PROFILE.logoutUrl) logoutLink.href = PROFILE.logoutUrl;
+    profileBtn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      profileMenu.classList.toggle('open');
+    });
+    document.addEventListener('click', (e)=>{
+      if(profileMenu.classList.contains('open') && !profileMenu.contains(e.target) && e.target !== profileBtn){
+        profileMenu.classList.remove('open');
+      }
+    });
+  } else {
+    profileBtn.style.display = 'none';
+  }
+
   (async function init(){
     const restored = await restore();
     if(!restored){
