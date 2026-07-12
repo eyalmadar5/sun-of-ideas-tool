@@ -318,6 +318,17 @@
   @keyframes tp-rec-pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
   #tp-record-timer{font-family:'Heebo',sans-serif;font-size:13px;color:#ff6b5b;font-weight:700;}
   #tp-caption-status{font-family:'Heebo',sans-serif;font-size:12px;color:#FFD873;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tp-error-box{
+    position:fixed;bottom:16px;left:16px;right:16px;z-index:210;
+    background:#2a0f0f;border:2px solid #c0392b;border-radius:12px;
+    padding:14px 16px;color:#fff;font-family:'Heebo',sans-serif;font-size:13px;
+    white-space:pre-wrap;word-break:break-word;max-height:40vh;overflow-y:auto;
+    display:none;
+  }
+  #tp-error-box button{
+    display:block;margin-top:10px;background:#c0392b;color:#fff;border:none;
+    border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;
+  }
   #tp-rotate-wrap{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border-radius:10px;padding:6px 10px;}
   #tp-rotate-preview{border-radius:6px;background:#000;display:block;}
   #tp-rotate-left,#tp-rotate-right{padding:6px 10px !important;font-size:16px !important;}
@@ -819,6 +830,10 @@
     <div id="tp-scrim"></div>
     <div id="teleprompter-viewport">
       <div id="teleprompter-text"></div>
+    </div>
+    <div id="tp-error-box">
+      <div id="tp-error-text"></div>
+      <button type="button" id="tp-error-close">סגירה</button>
     </div>
   </div>
 
@@ -2257,6 +2272,14 @@ ${excludeLine}
     const pad = (n,len)=> String(n).padStart(len||2,'0');
     return pad(h)+':'+pad(m)+':'+pad(s)+','+pad(ms,3);
   }
+  function tpShowErrorBox(text){
+    document.getElementById('tp-error-text').textContent = text;
+    document.getElementById('tp-error-box').style.display = 'block';
+  }
+  document.getElementById('tp-error-close').addEventListener('click', ()=>{
+    document.getElementById('tp-error-box').style.display = 'none';
+  });
+
   function tpBuildSrt(segments){
     return segments.map((seg, i)=>
       (i+1) + '\n' + tpFormatSrtTime(seg.startSec) + ' --> ' + tpFormatSrtTime(seg.endSec) + '\n' + seg.text + '\n'
@@ -2426,7 +2449,7 @@ ${excludeLine}
         console.error('Transcription/burn-in failed:', err);
         const fullMsg = (err && err.message) ? err.message : 'שגיאה לא ידועה';
         capStatusEl.textContent = '⚠️ כתוביות נכשלו - יורד הווידאו הנקי';
-        alert('פירוט השגיאה המלא (כדי שאפשר להעתיק ולשלוח):\n\n' + fullMsg);
+        tpShowErrorBox(fullMsg);
         downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
       }
     };
