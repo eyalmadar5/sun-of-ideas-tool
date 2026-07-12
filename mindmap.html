@@ -850,6 +850,7 @@
       <span id="tp-record-timer" style="display:none;"></span>
       <span id="tp-caption-status" style="display:none;"></span>
       <button type="button" id="tp-download-srt" style="display:none;">📝 הורדת כתוביות (SRT)</button>
+      <button type="button" id="tp-reedit-captions" style="display:none;">✏️ עריכת כתוביות מחדש</button>
       <button type="button" id="tp-playpause">⏸️ עצירה</button>
       <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
       <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
@@ -2302,6 +2303,8 @@ ${excludeLine}
   }
 
   let tpRecording = false;
+  let tpLastRawBlob = null;   // הווידאו הגולמי (בלי כתוביות) מההקלטה האחרונה - כדי לאפשר עריכה חוזרת בלי צילום מחדש
+  let tpLastScriptText = '';  // התסריט ששימש לתיקון האוטומטי, לשימוש חוזר
   let tpTranscriptSegments = []; // {text, startSec, endSec} — built from Whisper after recording, for the .srt file
 
   function tpFormatSrtTime(sec){
@@ -2396,6 +2399,40 @@ ${excludeLine}
   }
   document.getElementById('tp-error-close').addEventListener('click', ()=>{
     document.getElementById('tp-error-box').style.display = 'none';
+  });
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(url), 5000);
+  }
+
+  document.getElementById('tp-reedit-captions').addEventListener('click', async ()=>{
+    if(!tpLastRawBlob || tpTranscriptSegments.length === 0) return;
+    const capStatusEl = document.getElementById('tp-caption-status');
+    capStatusEl.style.display = 'inline';
+    capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
+    const editedSegments = await tpShowCaptionReview(tpTranscriptSegments);
+    if(!editedSegments || editedSegments.length === 0){
+      capStatusEl.style.display = 'none';
+      return; // ביטלו - לא עושים כלום, הקובץ הקודם עדיין תקף
+    }
+    try{
+      tpTranscriptSegments = editedSegments;
+      capStatusEl.textContent = '🔥 צורב כתוביות מעודכנות לתוך הווידאו...';
+      const finalBlob = await tpBurnInCaptions(tpLastRawBlob, editedSegments);
+      capStatusEl.textContent = '✅ מוכן! גרסה מעודכנת ירדה';
+      downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
+    }catch(err){
+      console.error('Re-burn failed:', err);
+      tpShowErrorBox((err && err.message) ? err.message : 'שגיאה בצריבה מחדש');
+      capStatusEl.style.display = 'none';
+    }
   });
 
   function tpBuildSrt(segments){
@@ -2518,18 +2555,9 @@ ${excludeLine}
     tpMediaRecorder.onstop = async ()=>{
       tpRecording = false;
       const rawBlob = new Blob(tpRecordedChunks, { type: 'video/webm' });
+      tpLastRawBlob = rawBlob; // שומרים כדי לאפשר עריכת כתוביות חוזרת בלי צילום מחדש
+      document.getElementById('tp-reedit-captions').style.display = 'none'; // מוסתר עד שיהיו כתוביות אמיתיות לערוך
       if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
-
-      function downloadBlob(blob, filename){
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(()=> URL.revokeObjectURL(url), 5000);
-      }
 
       // --- כתוביות אמיתיות: שולחים את ההקלטה עצמה לתמלול אחרי שההקלטה
       //     הסתיימה (לא בזמן אמת) - זה הרבה יותר אמין מזיהוי דיבור חי
@@ -2561,8 +2589,8 @@ ${excludeLine}
           const scriptNode = scriptPanelNodeId ? state.nodes[scriptPanelNodeId] : null;
           const rs = scriptNode ? scriptNode.reelScript : null;
           if(rs && rs.status === 'ready'){
-            const scriptText = [rs.hook, rs.body, rs.cta].filter(Boolean).join('\n');
-            correctedSegments = await tpAutoCorrectSegments(segments, scriptText);
+            tpLastScriptText = [rs.hook, rs.body, rs.cta].filter(Boolean).join('\n');
+            correctedSegments = await tpAutoCorrectSegments(segments, tpLastScriptText);
           }
           capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
           const editedSegments = await tpShowCaptionReview(correctedSegments);
@@ -2572,6 +2600,7 @@ ${excludeLine}
           } else {
             tpTranscriptSegments = editedSegments;
             document.getElementById('tp-download-srt').style.display = 'inline-block';
+            document.getElementById('tp-reedit-captions').style.display = 'inline-block';
             capStatusEl.textContent = '🔥 צורב כתוביות לתוך הווידאו...';
             const finalBlob = await tpBurnInCaptions(rawBlob, editedSegments);
             capStatusEl.textContent = '✅ מוכן! (' + editedSegments.length + ' משפטים)';
