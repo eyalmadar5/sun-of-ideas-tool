@@ -2401,7 +2401,8 @@ ${excludeLine}
         form.append('file', rawBlob, 'audio.webm');
         const res = await fetch(WHISPER_ENDPOINT, { method: 'POST', body: form });
         if(!res.ok){
-          throw new Error('שרת התמלול החזיר שגיאה (' + res.status + ')');
+          const bodyText = await res.text().catch(()=>'(אין פרטים נוספים)');
+          throw new Error('סטטוס ' + res.status + ' — ' + bodyText);
         }
         const data = await res.json();
         const segments = (data.segments || []).map(seg => ({
@@ -2423,7 +2424,9 @@ ${excludeLine}
         }
       }catch(err){
         console.error('Transcription/burn-in failed:', err);
-        capStatusEl.textContent = '⚠️ כתוביות נכשלו - יורד הווידאו הנקי (' + (err && err.message ? err.message : 'שגיאה') + ')';
+        const fullMsg = (err && err.message) ? err.message : 'שגיאה לא ידועה';
+        capStatusEl.textContent = '⚠️ כתוביות נכשלו - יורד הווידאו הנקי';
+        alert('פירוט השגיאה המלא (כדי שאפשר להעתיק ולשלוח):\n\n' + fullMsg);
         downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
       }
     };
