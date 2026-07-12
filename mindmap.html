@@ -2586,6 +2586,11 @@ ${excludeLine}
     canvas.height = dims.h;
     const ctx = canvas.getContext('2d');
 
+    // 🔧 אבחון זמני
+    const _angleDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.angle : 'אין screen.orientation';
+    const _typeDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.type : '-';
+    tpShowErrorBox('אבחון2: rawW=' + rawW + ' rawH=' + rawH + ' | angle=' + _angleDebug + ' type=' + _typeDebug + ' | תוקן=' + tpRotationDeg + '° | קנבס=' + canvas.width + 'x' + canvas.height);
+
 
     function drawFrame(){
       if(!tpRecording) return;
