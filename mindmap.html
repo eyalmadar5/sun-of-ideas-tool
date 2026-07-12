@@ -3194,7 +3194,28 @@ ${JSON.stringify(bio.result)}
   }
 
   async function fetchBio(rootText, answers){
-    const system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית.
+    let system, user;
+    if(isEnglish()){
+      system = `You are an expert copywriter specializing in writing high-converting bios for business Instagram/Facebook pages, for a US audience.
+Fixed structure you must apply:
+1. tagline: one line - professional name/handle, a dash, then area(s) of expertise formatted as "Area A | Area B | Area C" (up to 3 tags).
+2. Exactly 4 bullet lines, each starting with one relevant emoji and containing one short, converting sentence (up to 12 words), in this order:
+   - Line 1: credibility/experience, based only on the concrete detail provided
+   - Line 2: who you help and with what problem
+   - Line 3: objection removal with a concrete condition or timeframe
+   - Line 4: a clear, immediate call to action
+Tone: confident and direct, selling results not empty promises. Do not invent data - use only what was provided in the founder's answers.
+Reply ONLY with a JSON object structured as: {"tagline": "...", "bullets": ["...", "...", "...", "..."]}`;
+      user = `Business core topic: ${rootText}
+Name/handle: ${answers.name || 'not specified'}
+Area of expertise: ${answers.niche || 'not specified'}
+Credibility/experience: ${answers.credibility || 'not specified'}
+Target audience and problem: ${answers.audience || 'not specified'}
+Main promise and condition/timeframe: ${answers.promise || 'not specified'}
+Desired call to action: ${answers.cta || 'not specified'}
+Write one converting bio in English, for a US audience, following all the guidelines in the system prompt. Return ONLY a JSON object.`;
+    } else {
+      system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית.
 מבנה קבוע שאתם חייבים ליישם:
 1. tagline: שורה אחת - שם/כינוי מקצועי, מקף, ואחריו תחום/י עיסוק בפורמט "תחום א | תחום ב | תחום ג" (עד 3 תגיות).
 2. בדיוק 4 שורות bullets, כל שורה מתחילה באימוג'י בודד רלוונטי ומכילה משפט קצר וממיר אחד (עד 12 מילים), בסדר הבא:
@@ -3204,7 +3225,7 @@ ${JSON.stringify(bio.result)}
    - שורה 4: קריאה לפעולה ברורה ומיידית
 טון: בטוח וישיר, מוכר תוצאה ולא הבטחות ריקות. אל תמציאו נתונים - השתמשו רק במה שסופק בתשובות היזם/ית.
 השיבו אך ורק JSON object במבנה: {"tagline": "...", "bullets": ["...", "...", "...", "..."]}`;
-    const user = `נושא הליבה של העסק: ${rootText}
+      user = `נושא הליבה של העסק: ${rootText}
 שם/כינוי: ${answers.name || 'לא צוין'}
 תחום עיסוק: ${answers.niche || 'לא צוין'}
 אמינות/ניסיון: ${answers.credibility || 'לא צוין'}
@@ -3212,6 +3233,7 @@ ${JSON.stringify(bio.result)}
 הבטחה מרכזית ותנאי/זמן: ${answers.promise || 'לא צוין'}
 קריאה לפעולה רצויה: ${answers.cta || 'לא צוין'}
 כתבו ביו ממיר אחד לפי כל ההנחיות במערכת. החזירו אך ורק JSON object.`;
+    }
 
     try{
       const first = await callClaude(system, user, true);
@@ -3223,7 +3245,7 @@ ${JSON.stringify(bio.result)}
     const second = await callClaude(system, user, false);
     const parsed2 = parseBioJSON(second.text);
     if(!parsed2){
-      throw new Error('לא הצלחתי לפרש את הביו מהמודל');
+      throw new Error(isEnglish() ? 'Could not parse the bio from the model' : 'לא הצלחתי לפרש את הביו מהמודל');
     }
     return parsed2;
   }
@@ -3285,9 +3307,12 @@ ${JSON.stringify(bio.result)}
   }
 
   const PRODUCT_TYPES = [
-    { key:'course', label:'🎓 קורס דיגיטלי', desc:'תוכן מוקלט, נצרך עצמאית, מחיר נמוך-בינוני' },
-    { key:'1on1', label:'🤝 ליווי אישי 1:1', desc:'ליווי צמוד אחד-על-אחד, מחיר גבוה' },
-    { key:'group', label:'👥 ליווי קבוצתי', desc:'ליווי בקבוצה קטנה, מחיר בינוני' }
+    { key:'course', label:'🎓 קורס דיגיטלי', desc:'תוכן מוקלט, נצרך עצמאית, מחיר נמוך-בינוני',
+      labelEn:'🎓 Digital course', descEn:'Recorded content, self-paced, low-mid price' },
+    { key:'1on1', label:'🤝 ליווי אישי 1:1', desc:'ליווי צמוד אחד-על-אחד, מחיר גבוה',
+      labelEn:'🤝 1:1 coaching', descEn:'Close one-on-one coaching, high price' },
+    { key:'group', label:'👥 ליווי קבוצתי', desc:'ליווי בקבוצה קטנה, מחיר בינוני',
+      labelEn:'👥 Group coaching', descEn:'Small group coaching, mid price' }
   ];
 
   function collectExpandedTopics(){
@@ -3343,8 +3368,24 @@ ${JSON.stringify(bio.result)}
 
   async function fetchProductTeaser(rootText, topics, productType){
     const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
-    const typeLine = typeObj ? `\nחשוב מאוד: המוצר חייב להיות בדיוק ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}) - לא סוג אחר. כל מרכיבי המוצר, המחיר וההיקף צריכים להתאים למודל הזה בפרט: קורס דיגיטלי = תוכן מוקלט/כתוב שנצרך עצמאית בלי זמן אישי מהמוכר, מחיר נמוך-בינוני חד פעמי; ליווי 1:1 = זמן אישי צמוד של המוכר עם הלקוח, מחיר גבוה; ליווי קבוצתי = מפגשים קבוצתיים עם כמה לקוחות יחד, מחיר בינוני.` : '';
-    const system = `אתם יועץ/ת אסטרטגי/ת למוצרים ושירותים דיגיטליים לעסקים קטנים.
+    let system, user;
+    if(isEnglish()){
+      const typeLineEn = typeObj ? `\nVery important: the product must be exactly ${typeObj.labelEn.replace(/^[^\s]+\s/,'')} (${typeObj.descEn}) - not another type. All product components, price, and scope must match this specific model: digital course = recorded/written content consumed independently with no personal time from the seller, low-mid one-time price; 1:1 coaching = close personal time from the seller with the client, high price; group coaching = group sessions with several clients together, mid price.` : '';
+      system = `You are a strategic consultant for digital products and services for small businesses in the United States.
+Your job: propose a concrete, profitable new product or service idea, based on the business's core topic and the specific content topics the founder chose to explore further (this signals real audience interest/pain).
+The product should be focused enough to solve one clear problem, not "just another generic course".${typeLineEn}
+Reply ONLY with a JSON object: {"name": "...", "description": "...", "priceDisplay": "...", "priceNumeric": 000, "keyComponents": ["...", "..."]}
+- name: a short, catchy name for the product/service
+- description: 2-3 sentences about what it is and who it's for
+- priceDisplay: a suggested price in readable US format (e.g. "$497/month" or "$1,200 one-time")
+- priceNumeric: the same price as a plain number (in USD, no symbols), an integer
+- keyComponents: an array of 3-5 main components the product includes, each a short sentence`;
+      user = `Business core topic: ${rootText}
+Content topics the founder chose to explore further (signal real interest/pain): ${topics.join(', ')}
+Propose one profitable product/service idea based on these topics, for a US audience. Return ONLY a JSON object.`;
+    } else {
+      const typeLine = typeObj ? `\nחשוב מאוד: המוצר חייב להיות בדיוק ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}) - לא סוג אחר. כל מרכיבי המוצר, המחיר וההיקף צריכים להתאים למודל הזה בפרט: קורס דיגיטלי = תוכן מוקלט/כתוב שנצרך עצמאית בלי זמן אישי מהמוכר, מחיר נמוך-בינוני חד פעמי; ליווי 1:1 = זמן אישי צמוד של המוכר עם הלקוח, מחיר גבוה; ליווי קבוצתי = מפגשים קבוצתיים עם כמה לקוחות יחד, מחיר בינוני.` : '';
+      system = `אתם יועץ/ת אסטרטגי/ת למוצרים ושירותים דיגיטליים לעסקים קטנים.
 תפקידכם: להציע רעיון קונקרטי ורווחי למוצר או שירות חדש, בהתבסס על נושא הליבה של העסק ועל נושאי התוכן הספציפיים שהיזם/ית בחר/ה להעמיק בהם (זה מסמן עניין אמיתי/כאב אמיתי של הקהל).
 המוצר צריך להיות ממוקד מספיק כדי לפתור בעיה אחת ברורה, ולא "עוד קורס כללי".${typeLine}
 השיבו אך ורק JSON object: {"name": "...", "description": "...", "priceDisplay": "...", "priceNumeric": 000, "keyComponents": ["...", "..."]}
@@ -3353,9 +3394,10 @@ ${JSON.stringify(bio.result)}
 - priceDisplay: מחיר מוצע בפורמט קריא (למשל "₪497 לחודש" או "₪1,200 חד פעמי")
 - priceNumeric: אותו מחיר כמספר בלבד (בשקלים, בלי סימנים), מספר שלם
 - keyComponents: מערך של 3-5 מרכיבים עיקריים שהמוצר כולל, כל אחד משפט קצר`;
-    const user = `נושא הליבה של העסק: ${rootText}
+      user = `נושא הליבה של העסק: ${rootText}
 נושאי תוכן שהיזם/ית בחר/ה להעמיק בהם (מעידים על עניין/כאב אמיתי): ${topics.join(', ')}
 הציעו רעיון אחד למוצר/שירות רווחי המבוסס על הנושאים האלה. החזירו אך ורק JSON object.`;
+    }
 
     try{
       const first = await callClaude(system, user, true);
@@ -3366,7 +3408,7 @@ ${JSON.stringify(bio.result)}
     }
     const second = await callClaude(system, user, false);
     const parsed2 = parseTeaserJSON(second.text);
-    if(!parsed2) throw new Error('לא הצלחתי לפרש את רעיון המוצר');
+    if(!parsed2) throw new Error(isEnglish() ? 'Could not parse the product idea' : 'לא הצלחתי לפרש את רעיון המוצר');
     return parsed2;
   }
 
@@ -3417,8 +3459,26 @@ ${JSON.stringify(bio.result)}
 
   async function fetchFullOffer(rootText, teaser, productType){
     const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
-    const typeLine = typeObj ? `\nחשוב: המוצר חייב להיבנות כ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}). התאימו את מרכיבי ה-value stack, את המחיר הסופי, ואת אופי ההבטחה/דחיפות למודל הזה בפרט - קורס דיגיטלי נצרך עצמאית ומחירו נמוך-בינוני; ליווי 1:1 הוא זמן אישי צמוד ומחירו גבוה משמעותית; ליווי קבוצתי הוא באמצע, עם תחושת קהילה.` : '';
-    const system = `אתם מומחה/ית לבניית הצעות מכר (offers) בלתי ניתנות לסירוב, לפי עקרונות "הצעה שאי אפשר לסרב לה" (value stacking, הבטחת תוצאה, הסרת סיכון, דחיפות אמיתית - לא מזויפת).
+    let system, user;
+    if(isEnglish()){
+      const typeLineEn = typeObj ? `\nImportant: the product must be built as ${typeObj.labelEn.replace(/^[^\s]+\s/,'')} (${typeObj.descEn}). Adapt the value stack components, final price, and the nature of the guarantee/urgency to this specific model - a digital course is consumed independently and priced low-mid; 1:1 coaching is close personal time and priced significantly higher; group coaching is in the middle, with a sense of community.` : '';
+      system = `You are an expert at building irresistible sales offers, following "offer you can't refuse" principles (value stacking, outcome guarantee, risk removal, real - not fake - urgency), for a US audience.
+You received a basic product/service idea. Your job is to expand it into a full, persuasive offer:
+1. valueStack: break the product into separate components (e.g., the coaching itself, templates/tools, a support group, bonuses) and attach an estimated "value" in USD to each as if sold separately - so the total accumulated value is significantly higher than the final price.
+2. guarantee: a concrete promise/guarantee that removes risk from the customer (e.g., full refund under a measurable condition).
+3. scarcity: a real and fair urgency mechanism (limited spots, price increasing for the next cohort, etc.) - not fake pressure.
+4. bonuses: 2-3 concrete bonuses that reinforce the feeling of "way too much value for this price".
+5. finalPriceDisplay/finalPriceNumeric: the suggested final price (can be similar to or adjusted from the original), with a short justification explaining why it's worth far more than what the customer pays.${typeLineEn}
+Reply ONLY with a JSON object: {"valueStack": [{"item":"...", "value":"..."}], "totalStackValueDisplay": "...", "guarantee": "...", "scarcity": "...", "bonuses": ["...", "..."], "finalPriceDisplay": "...", "finalPriceNumeric": 000, "justification": "..."}`;
+      user = `Product name: ${teaser.name}
+Description: ${teaser.description}
+Original suggested price: ${teaser.priceDisplay}
+Main components already defined: ${teaser.keyComponents.join(', ')}
+Business core topic: ${rootText}
+Build a full, irresistible offer around this product, for a US audience. Return ONLY a JSON object.`;
+    } else {
+      const typeLine = typeObj ? `\nחשוב: המוצר חייב להיבנות כ${typeObj.label.replace(/^[^\s]+\s/,'')} (${typeObj.desc}). התאימו את מרכיבי ה-value stack, את המחיר הסופי, ואת אופי ההבטחה/דחיפות למודל הזה בפרט - קורס דיגיטלי נצרך עצמאית ומחירו נמוך-בינוני; ליווי 1:1 הוא זמן אישי צמוד ומחירו גבוה משמעותית; ליווי קבוצתי הוא באמצע, עם תחושת קהילה.` : '';
+      system = `אתם מומחה/ית לבניית הצעות מכר (offers) בלתי ניתנות לסירוב, לפי עקרונות "הצעה שאי אפשר לסרב לה" (value stacking, הבטחת תוצאה, הסרת סיכון, דחיפות אמיתית - לא מזויפת).
 קיבלתם רעיון בסיסי למוצר/שירות. תפקידכם להרחיב אותו להצעה מלאה ומשכנעת:
 1. valueStack: פרקו את המוצר למרכיבים נפרדים (למשל: הליווי עצמו, תבניות/כלים, קבוצת תמיכה, בונוסים) וצרפו לכל מרכיב "שווי" מוערך בש"ח כאילו נמכר בנפרד - כך שסך השווי המצטבר יהיה גבוה משמעותית מהמחיר הסופי.
 2. guarantee: הבטחה/ערבות קונקרטית שמסירה סיכון מהלקוח (למשל החזר כספי מלא בתנאי מדיד).
@@ -3426,12 +3486,13 @@ ${JSON.stringify(bio.result)}
 4. bonuses: 2-3 בונוסים קונקרטיים שמחזקים את התחושה של "יותר מדי ערך במחיר הזה".
 5. finalPriceDisplay/finalPriceNumeric: המחיר הסופי המוצע (יכול להיות דומה למחיר המקורי או מותאם), עם justification קצר שמסביר למה זה שווה הרבה יותר ממה שהלקוח משלם.${typeLine}
 השיבו אך ורק JSON object: {"valueStack": [{"item":"...", "value":"..."}], "totalStackValueDisplay": "...", "guarantee": "...", "scarcity": "...", "bonuses": ["...", "..."], "finalPriceDisplay": "...", "finalPriceNumeric": 000, "justification": "..."}`;
-    const user = `שם המוצר: ${teaser.name}
+      user = `שם המוצר: ${teaser.name}
 תיאור: ${teaser.description}
 מחיר מוצע מקורי: ${teaser.priceDisplay}
 מרכיבים עיקריים שכבר הוגדרו: ${teaser.keyComponents.join(', ')}
 נושא הליבה של העסק: ${rootText}
 בנו הצעה מלאה ובלתי ניתנת לסירוב סביב המוצר הזה. החזירו אך ורק JSON object.`;
+    }
 
     try{
       const first = await callClaude(system, user, true);
@@ -3442,7 +3503,7 @@ ${JSON.stringify(bio.result)}
     }
     const second = await callClaude(system, user, false);
     const parsed2 = parseFullOfferJSON(second.text);
-    if(!parsed2) throw new Error('לא הצלחתי לבנות את ההצעה המלאה');
+    if(!parsed2) throw new Error(isEnglish() ? 'Could not build the full offer' : 'לא הצלחתי לבנות את ההצעה המלאה');
     return parsed2;
   }
 
