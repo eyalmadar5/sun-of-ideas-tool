@@ -2263,6 +2263,83 @@ ${excludeLine}
     ).join('\n');
   }
 
+  function tpWrapText(ctx, text, maxWidth){
+    const words = text.split(' ');
+    let lines = [], line = '';
+    words.forEach(w=>{
+      const test = line ? line + ' ' + w : w;
+      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
+      else line = test;
+    });
+    if(line) lines.push(line);
+    return lines.slice(0, 2); // כתוביות רגילות - עד שתי שורות בכל רגע נתון
+  }
+
+  // מנגן מחדש את הווידאו שכבר הוקלט (כבר באוריינטציה הנכונה שאושרה), מצייר על
+  // כל פריים את הכתובית המתאימה לפי התזמון המדויק מ-Whisper, ומקליט תוצאה
+  // חדשה - קובץ אחד מוכן עם כתוביות צרובות בפנים.
+  async function tpBurnInCaptions(videoBlob, segments){
+    const sourceVideo = document.createElement('video');
+    sourceVideo.src = URL.createObjectURL(videoBlob);
+    sourceVideo.muted = true; // לא נרצה שזה יישמע בזמן העיבוד - השמע עדיין נלכד לפלט
+    sourceVideo.playsInline = true;
+
+    await new Promise((resolve, reject)=>{
+      sourceVideo.onloadedmetadata = resolve;
+      sourceVideo.onerror = ()=> reject(new Error('טעינת הווידאו לעיבוד נכשלה'));
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = sourceVideo.videoWidth;
+    canvas.height = sourceVideo.videoHeight;
+    const ctx = canvas.getContext('2d');
+
+    const sourceStream = sourceVideo.captureStream ? sourceVideo.captureStream() : sourceVideo.mozCaptureStream();
+    const audioTrack = sourceStream.getAudioTracks()[0];
+    const canvasStream = canvas.captureStream(30);
+    if(audioTrack) canvasStream.addTrack(audioTrack);
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+    const recorder = new MediaRecorder(canvasStream, { mimeType });
+    const chunks = [];
+    recorder.ondataavailable = (e)=>{ if(e.data.size > 0) chunks.push(e.data); };
+    const donePromise = new Promise(resolve=>{ recorder.onstop = ()=> resolve(new Blob(chunks, {type:'video/webm'})); });
+
+    function findCaptionAt(t){
+      const seg = segments.find(s => t >= s.startSec && t <= s.endSec);
+      return seg ? seg.text : '';
+    }
+    function drawLoop(){
+      if(sourceVideo.paused || sourceVideo.ended) return;
+      ctx.drawImage(sourceVideo, 0, 0, canvas.width, canvas.height);
+      const caption = findCaptionAt(sourceVideo.currentTime);
+      if(caption){
+        const fontSize = Math.round(canvas.width * 0.045);
+        ctx.font = '700 ' + fontSize + 'px Rubik, Arial, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        const lines = tpWrapText(ctx, caption, canvas.width * 0.86);
+        const lineHeight = fontSize * 1.3;
+        const boxHeight = lines.length * lineHeight + 24;
+        const boxY = canvas.height - boxHeight - canvas.height * 0.06;
+        ctx.fillStyle = 'rgba(0,0,0,0.62)';
+        ctx.fillRect(canvas.width*0.05, boxY, canvas.width*0.9, boxHeight);
+        ctx.fillStyle = '#fff';
+        lines.forEach((line, i)=> ctx.fillText(line, canvas.width/2, boxY + 12 + i*lineHeight + lineHeight/2));
+      }
+      requestAnimationFrame(drawLoop);
+    }
+
+    recorder.start();
+    sourceVideo.onended = ()=>{ if(recorder.state !== 'inactive') recorder.stop(); };
+    await sourceVideo.play();
+    drawLoop();
+
+    const outputBlob = await donePromise;
+    URL.revokeObjectURL(sourceVideo.src);
+    return outputBlob;
+  }
+
   function tpStartRecording(){
     if(!tpCameraStream) return;
     tpRecording = true;
@@ -2299,28 +2376,31 @@ ${excludeLine}
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = async ()=>{
       tpRecording = false;
-      const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'reel-' + Date.now() + '.webm';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(()=> URL.revokeObjectURL(url), 5000);
+      const rawBlob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
+
+      function downloadBlob(blob, filename){
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(()=> URL.revokeObjectURL(url), 5000);
+      }
 
       // --- כתוביות אמיתיות: שולחים את ההקלטה עצמה לתמלול אחרי שההקלטה
       //     הסתיימה (לא בזמן אמת) - זה הרבה יותר אמין מזיהוי דיבור חי
-      //     בתוך iframe, שלא תמיד עובד בכלל. ---
+      //     בתוך iframe, שלא תמיד עובד בכלל. אז צורבים אותן לתוך קובץ
+      //     אחד סופי, מוכן לפרסום. ---
       capStatusEl.style.display = 'inline';
       capStatusEl.textContent = '💬 מתמלל את ההקלטה...';
       try{
         const form = new FormData();
-        form.append('file', blob, 'audio.webm');
+        form.append('file', rawBlob, 'audio.webm');
         const res = await fetch(WHISPER_ENDPOINT, { method: 'POST', body: form });
         if(!res.ok){
-          const errBody = await res.text();
           throw new Error('שרת התמלול החזיר שגיאה (' + res.status + ')');
         }
         const data = await res.json();
@@ -2329,16 +2409,22 @@ ${excludeLine}
           startSec: seg.start,
           endSec: seg.end
         })).filter(seg => seg.text);
+
         if(segments.length === 0){
-          capStatusEl.textContent = '⚠️ לא זוהה דיבור בהקלטה';
+          capStatusEl.textContent = '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
+          downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
         } else {
           tpTranscriptSegments = segments;
-          capStatusEl.textContent = '✅ כתוביות מוכנות (' + segments.length + ' משפטים)';
           document.getElementById('tp-download-srt').style.display = 'inline-block';
+          capStatusEl.textContent = '🔥 צורב כתוביות לתוך הווידאו...';
+          const finalBlob = await tpBurnInCaptions(rawBlob, segments);
+          capStatusEl.textContent = '✅ מוכן! (' + segments.length + ' משפטים)';
+          downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
         }
       }catch(err){
-        console.error('Transcription failed:', err);
-        capStatusEl.textContent = '⚠️ תמלול נכשל (' + (err && err.message ? err.message : 'שגיאה') + ')';
+        console.error('Transcription/burn-in failed:', err);
+        capStatusEl.textContent = '⚠️ כתוביות נכשלו - יורד הווידאו הנקי (' + (err && err.message ? err.message : 'שגיאה') + ')';
+        downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
       }
     };
     tpMediaRecorder.start();
