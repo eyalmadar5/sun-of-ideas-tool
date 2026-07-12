@@ -2930,20 +2930,33 @@ Write one viral reel script in English about the specific topic, for a US audien
     const rs = node.reelScript;
     scriptReviseBtn.disabled = true;
     const originalLabel = scriptReviseBtn.textContent;
-    scriptReviseBtn.textContent = 'מעדכן...';
+    scriptReviseBtn.textContent = isEnglish() ? 'Updating...' : 'מעדכן...';
     try{
-      const system = `אתם קופירייטר/ית מומחה/ית בעריכת תסריטים לרילים ויראליים (טיקטוק, אינסטגרם, פייסבוק), עם דגש על שכנוע ופסיכולוגיה שיווקית - הוק חזק ב-2-3 השניות הראשונות, ערך אמיתי בגוף, קריאה לפעולה אחת וברורה, שפה מדוברת בגוף שני, אורך שמתאים להקראה בתוך כדקה (עד כ-150 מילים בסך הכל).
+      let system, user;
+      if(isEnglish()){
+        system = `You are an expert copywriter editing scripts for viral reels (TikTok, Instagram, Facebook), with emphasis on persuasion and marketing psychology - a strong hook in the first 2-3 seconds, real value in the body, one clear call to action, spoken second-person language, length suited to being read aloud within about a minute (up to ~160 words total).
+You received an existing script (JSON) and a change request from the founder. Update the script according to the request only, keeping all other parts the request doesn't touch, and the principles above. Reply ONLY with the exact same JSON structure:
+{"hook":"...", "body":"...", "cta":"...", "shots":["..."], "caption":"...", "hashtags":["..."]}`;
+        user = `The existing script:
+${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], caption:rs.caption||'', hashtags:rs.hashtags||[]})}
+
+Change request from the founder: ${instruction}
+
+Update the script accordingly. Return ONLY a JSON object in the same structure.`;
+      } else {
+        system = `אתם קופירייטר/ית מומחה/ית בעריכת תסריטים לרילים ויראליים (טיקטוק, אינסטגרם, פייסבוק), עם דגש על שכנוע ופסיכולוגיה שיווקית - הוק חזק ב-2-3 השניות הראשונות, ערך אמיתי בגוף, קריאה לפעולה אחת וברורה, שפה מדוברת בגוף שני, אורך שמתאים להקראה בתוך כדקה (עד כ-150 מילים בסך הכל).
 קיבלתם תסריט קיים (JSON) ובקשת שינוי מהיזם/ית. עדכנו את התסריט לפי הבקשה בלבד, תוך שמירה על כל שאר החלקים שהבקשה לא נוגעת בהם ועל העקרונות שלמעלה. השיבו אך ורק באותו מבנה JSON בדיוק:
 {"hook":"...", "body":"...", "cta":"...", "shots":["..."], "caption":"...", "hashtags":["..."]}`;
-      const user = `התסריט הקיים:
+        user = `התסריט הקיים:
 ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], caption:rs.caption||'', hashtags:rs.hashtags||[]})}
 
 בקשת השינוי מהיזם/ית: ${instruction}
 
 עדכנו את התסריט בהתאם. החזירו אך ורק JSON object באותו מבנה.`;
+      }
       const resp = await callClaude(system, user, false);
       const parsed = parseScriptJSON(resp.text);
-      if(!parsed) throw new Error('לא הצלחתי לפרש את התסריט המעודכן');
+      if(!parsed) throw new Error(isEnglish() ? 'Could not parse the updated script' : 'לא הצלחתי לפרש את התסריט המעודכן');
       node.reelScript = Object.assign({}, rs, parsed, { status:'ready' });
       renderScriptPanel();
       refreshViews();
@@ -2951,7 +2964,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
       scriptReviseInput.value = '';
     }catch(err){
       console.error('reviseReelScript failed:', err);
-      showError('לא הצלחתי לעדכן את התסריט (' + (err && err.message ? err.message : 'שגיאה') + ')');
+      showError((isEnglish() ? 'Could not update the script (' : 'לא הצלחתי לעדכן את התסריט (') + (err && err.message ? err.message : (isEnglish() ? 'error' : 'שגיאה')) + ')');
     } finally {
       scriptReviseBtn.disabled = false;
       scriptReviseBtn.textContent = originalLabel;
@@ -3137,19 +3150,31 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     if(!bio || bio.status !== 'ready' || !bio.result) return;
     bioReviseBtn.disabled = true;
     const originalLabel = bioReviseBtn.textContent;
-    bioReviseBtn.textContent = 'מעדכן...';
+    bioReviseBtn.textContent = isEnglish() ? 'Updating...' : 'מעדכן...';
     try{
-      const system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית - כותרת קצרה (tagline) ואחריה בדיוק 4 שורות bullets עם אימוג'ים (אמינות/ניסיון, למי עוזרים, הסרת התנגדות עם תנאי/זמן, קריאה לפעולה).
+      let system, user;
+      if(isEnglish()){
+        system = `You are an expert copywriter for high-converting Instagram/Facebook business page bios in English - a short tagline followed by exactly 4 bullet lines with emojis (credibility/experience, who you help, objection removal with a condition/timeframe, call to action).
+You received an existing bio (JSON) and a change request from the founder. Update it according to the request only, keeping the structure and principles. Reply ONLY with JSON: {"tagline":"...", "bullets":["...","...","...","..."]}`;
+        user = `The existing bio:
+${JSON.stringify(bio.result)}
+
+Change request from the founder: ${instruction}
+
+Update the bio accordingly. Return ONLY a JSON object.`;
+      } else {
+        system = `אתם קופירייטר/ית מומחה/ית לכתיבת ביואים (Bio) ממירים לעמודי אינסטגרם/פייסבוק עסקיים בעברית - כותרת קצרה (tagline) ואחריה בדיוק 4 שורות bullets עם אימוג'ים (אמינות/ניסיון, למי עוזרים, הסרת התנגדות עם תנאי/זמן, קריאה לפעולה).
 קיבלתם ביו קיים (JSON) ובקשת שינוי מהיזם/ית. עדכנו לפי הבקשה בלבד, תוך שמירה על המבנה והעקרונות. השיבו אך ורק JSON: {"tagline":"...", "bullets":["...","...","...","..."]}`;
-      const user = `הביו הקיים:
+        user = `הביו הקיים:
 ${JSON.stringify(bio.result)}
 
 בקשת השינוי מהיזם/ית: ${instruction}
 
 עדכנו את הביו בהתאם. החזירו אך ורק JSON object.`;
+      }
       const resp = await callClaude(system, user, false);
       const parsed = parseBioJSON(resp.text);
-      if(!parsed) throw new Error('לא הצלחתי לפרש את הביו המעודכן');
+      if(!parsed) throw new Error(isEnglish() ? 'Could not parse the updated bio' : 'לא הצלחתי לפרש את הביו המעודכן');
       bio.result = parsed;
       renderBioPanel();
       refreshViews();
@@ -3157,7 +3182,7 @@ ${JSON.stringify(bio.result)}
       bioReviseInput.value = '';
     }catch(err){
       console.error('reviseBio failed:', err);
-      showError('לא הצלחתי לעדכן את הביו (' + (err && err.message ? err.message : 'שגיאה') + ')');
+      showError((isEnglish() ? 'Could not update the bio (' : 'לא הצלחתי לעדכן את הביו (') + (err && err.message ? err.message : (isEnglish() ? 'error' : 'שגיאה')) + ')');
     } finally {
       bioReviseBtn.disabled = false;
       bioReviseBtn.textContent = originalLabel;
