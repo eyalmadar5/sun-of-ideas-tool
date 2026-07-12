@@ -16,6 +16,19 @@ add_action('wp_logout', function () {
     exit;
 });
 
+// נקודת התנתקות "ישירה" משלנו - מדלגת לגמרי על מסך האישור המובנה של
+// וורדפרס ("Do you really want to log out?"), כדי שלחיצה אחת תתנתק
+// ותחזיר ישר לדף הבית, בלי שלב ביניים. (הערת אבטחה: זה מוותר על הגנת
+// ה-CSRF שהמנגנון הרגיל של וורדפרס נותן, בתמורה לחוויה חלקה יותר - כאן
+// זה סיכון נמוך, כי הפעולה היחידה שאפשר "לכפות" היא ניתוק, לא חשיפת מידע).
+add_action('init', function () {
+    if (isset($_GET['sunideas_logout']) && is_user_logged_in()) {
+        wp_logout();
+        wp_safe_redirect(home_url());
+        exit;
+    }
+});
+
 // ============================================================
 // בדיקה יומית: חוסמת אוטומטית משתמשים שתוקף המנוי שלהם פג
 // (רשת ביטחון - תופסת גם ביטולים ש-Grow לא בהכרח שולחת עליהם
@@ -619,7 +632,7 @@ add_action('template_redirect', function () {
         . '&uemail=' . urlencode($current_user->user_email)
         . '&subactive=' . ($sub_active === '1' ? '1' : '0')
         . '&subexpiry=' . $sub_expiry
-        . '&logouturl=' . urlencode(wp_logout_url(home_url()));
+        . '&logouturl=' . urlencode(add_query_arg('sunideas_logout', '1', home_url()));
     sunideas_render_fullbleed_page($tool_iframe_url);
 });
 
