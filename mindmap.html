@@ -844,6 +844,7 @@
         <canvas id="tp-rotate-preview" width="60" height="107"></canvas>
         <button type="button" id="tp-rotate-left" title="סובב שמאלה">↺</button>
         <button type="button" id="tp-rotate-right" title="סובב ימינה">↻</button>
+        <button type="button" id="tp-camera-flip" title="היפוך אופקי">🪞</button>
         <span style="font-size:11px;color:#ccc;">כוונו עד שהתצוגה הקטנה נראית ישרה</span>
       </div>
       <button type="button" id="tp-record-toggle" style="display:none;">⏺️ הקלטה</button>
@@ -2225,6 +2226,7 @@ ${excludeLine}
   const tpRotateLeft = document.getElementById('tp-rotate-left');
   const tpRotateRight = document.getElementById('tp-rotate-right');
   let tpRotationDeg = 0; // 0, 90, 180, 270 — auto-guessed from device orientation, user can still confirm/override visually
+  let tpCameraMirror = false; // היפוך אופקי של תוכן המצלמה - נפרד מהיפוך טקסט הטלפרומפטר
   let tpPreviewRafId = null;
 
   // מנחשים אוטומטית איזה סיבוב צריך, לפי איך שהטלפון מוחזק ברגע נתון (screen.orientation)
@@ -2259,10 +2261,11 @@ ${excludeLine}
 
   // מצייר פריים אחד עם הסיבוב הנתון - בשימוש הן בתצוגה הקטנה לאישור והן
   // בהקלטה בפועל, כדי שמה שהמשתמש מאשר יהיה בדיוק מה שנרשם בקובץ.
-  function tpDrawRotatedFrame(ctx, canvasW, canvasH, rawW, rawH, rotationDeg){
+  function tpDrawRotatedFrame(ctx, canvasW, canvasH, rawW, rawH, rotationDeg, mirror){
     ctx.save();
     ctx.translate(canvasW/2, canvasH/2);
     ctx.rotate(rotationDeg * Math.PI / 180);
+    if(mirror) ctx.scale(-1, 1);
     // אחרי הסיבוב, מערכת הצירים עצמה מסתובבת - אז "השטח הזמין" לצייר בו מתחלף
     // בין רוחב לגובה אם הסיבוב הוא 90/270.
     const rotated90 = (rotationDeg === 90 || rotationDeg === 270);
@@ -2294,12 +2297,13 @@ ${excludeLine}
     ctx.save();
     ctx.translate((tpRotatePreview.width - dims.w*scale)/2, (tpRotatePreview.height - dims.h*scale)/2);
     ctx.scale(scale, scale);
-    tpDrawRotatedFrame(ctx, dims.w, dims.h, rawW, rawH, tpRotationDeg);
+    tpDrawRotatedFrame(ctx, dims.w, dims.h, rawW, rawH, tpRotationDeg, tpCameraMirror);
     ctx.restore();
     tpPreviewRafId = requestAnimationFrame(tpPreviewTick);
   }
   tpRotateLeft.addEventListener('click', ()=>{ tpRotationDeg = (tpRotationDeg + 270) % 360; });
   tpRotateRight.addEventListener('click', ()=>{ tpRotationDeg = (tpRotationDeg + 90) % 360; });
+  document.getElementById('tp-camera-flip').addEventListener('click', ()=>{ tpCameraMirror = !tpCameraMirror; });
 
   async function tpStartCamera(){
     try{
@@ -2583,11 +2587,11 @@ ${excludeLine}
     const ctx = canvas.getContext('2d');
 
     // 🔧 אבחון זמני - נסיר את זה ברגע שנפתור את בעיית האוריינטציה
-    tpShowErrorBox('אבחון: rawW=' + rawW + ' rawH=' + rawH + ' תוקן=' + tpRotationDeg + '° | קנבס=' + canvas.width + 'x' + canvas.height);
+    tpShowErrorBox('אבחון: rawW=' + rawW + ' rawH=' + rawH + ' תוקן=' + tpRotationDeg + '° | היפוך=' + tpCameraMirror + ' | קנבס=' + canvas.width + 'x' + canvas.height);
 
     function drawFrame(){
       if(!tpRecording) return;
-      tpDrawRotatedFrame(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg);
+      tpDrawRotatedFrame(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg, tpCameraMirror);
       requestAnimationFrame(drawFrame);
     }
     drawFrame();
