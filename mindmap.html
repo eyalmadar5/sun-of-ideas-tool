@@ -2224,8 +2224,38 @@ ${excludeLine}
   const tpRotateWrap = document.getElementById('tp-rotate-wrap');
   const tpRotateLeft = document.getElementById('tp-rotate-left');
   const tpRotateRight = document.getElementById('tp-rotate-right');
-  let tpRotationDeg = 0; // 0, 90, 180, 270 — the user confirms this visually before recording
+  let tpRotationDeg = 0; // 0, 90, 180, 270 — auto-guessed from device orientation, user can still confirm/override visually
   let tpPreviewRafId = null;
+
+  // מנחשים אוטומטית איזה סיבוב צריך, לפי איך שהטלפון מוחזק ברגע נתון (screen.orientation)
+  // יחד עם צורת ה-buffer הגולמי של המצלמה. זה מתעדכן חי אם מסובבים את הטלפון כשהתצוגה
+  // פתוחה. התצוגה הקטנה + כפתורי הסיבוב עדיין נשארים כדי לתקן ידנית אם הניחוש לא מדויק.
+  function tpAutoDetectRotation(){
+    const rawW = tpCameraVideo.videoWidth || 720;
+    const rawH = tpCameraVideo.videoHeight || 1280;
+    const bufferIsLandscape = rawW > rawH;
+    let angle = 0;
+    if(window.screen && window.screen.orientation && typeof window.screen.orientation.angle === 'number'){
+      angle = window.screen.orientation.angle;
+    } else if(typeof window.orientation === 'number'){
+      angle = Math.abs(window.orientation);
+    }
+    const deviceHeldUpright = (angle === 0 || angle === 180); // אחזקה "רגילה" (פורטרט)
+    // כשמחזיקים רגיל אבל ה-buffer הגולמי יוצא רחב - צריך סיבוב 90 מעלות כדי לצאת לאורך.
+    // כשמסובבים לרוחב, ההתנהגות הפוכה (כפי שנצפה בפועל במכשיר הזה).
+    tpRotationDeg = deviceHeldUpright
+      ? (bufferIsLandscape ? 90 : 0)
+      : (bufferIsLandscape ? 0 : 90);
+  }
+  function tpOnDeviceOrientationChange(){
+    if(!tpCameraStream) return;
+    tpAutoDetectRotation();
+  }
+  if(window.screen && window.screen.orientation){
+    window.screen.orientation.addEventListener('change', tpOnDeviceOrientationChange);
+  } else {
+    window.addEventListener('orientationchange', tpOnDeviceOrientationChange);
+  }
 
   // מצייר פריים אחד עם הסיבוב הנתון - בשימוש הן בתצוגה הקטנה לאישור והן
   // בהקלטה בפועל, כדי שמה שהמשתמש מאשר יהיה בדיוק מה שנרשם בקובץ.
@@ -2272,8 +2302,13 @@ ${excludeLine}
       tpCameraToggle.textContent = '🎥 כיבוי מצלמה';
       tpCameraToggle.classList.add('active');
       tpRecordToggle.style.display = 'inline-block';
-      tpRotationDeg = 0;
       tpRotateWrap.style.display = 'flex';
+      // מחכים לרגע שיש מידות buffer אמיתיות לפני שמנחשים סיבוב
+      const guessWhenReady = ()=>{
+        if(tpCameraVideo.videoWidth){ tpAutoDetectRotation(); }
+        else { setTimeout(guessWhenReady, 100); }
+      };
+      guessWhenReady();
       tpPreviewTick();
     }catch(err){
       console.error('Camera access failed:', err);
