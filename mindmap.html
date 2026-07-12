@@ -318,6 +318,9 @@
   @keyframes tp-rec-pulse{0%,100%{opacity:1;}50%{opacity:.6;}}
   #tp-record-timer{font-family:'Heebo',sans-serif;font-size:13px;color:#ff6b5b;font-weight:700;}
   #tp-caption-status{font-family:'Heebo',sans-serif;font-size:12px;color:#FFD873;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #tp-rotate-wrap{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border-radius:10px;padding:6px 10px;}
+  #tp-rotate-preview{border-radius:6px;background:#000;display:block;}
+  #tp-rotate-left,#tp-rotate-right{padding:6px 10px !important;font-size:16px !important;}
   #tp-camera-video{
     position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
     z-index:0;display:none;transform:scaleX(-1);
@@ -796,9 +799,16 @@
     <div id="teleprompter-controls">
       <button type="button" id="tp-close" title="סגירה">✕ סגירה</button>
       <button type="button" id="tp-camera-toggle">🎥 הפעלת מצלמה</button>
+      <div id="tp-rotate-wrap" style="display:none;">
+        <canvas id="tp-rotate-preview" width="60" height="107"></canvas>
+        <button type="button" id="tp-rotate-left" title="סובב שמאלה">↺</button>
+        <button type="button" id="tp-rotate-right" title="סובב ימינה">↻</button>
+        <span style="font-size:11px;color:#ccc;">כוונו עד שהתצוגה הקטנה נראית ישרה</span>
+      </div>
       <button type="button" id="tp-record-toggle" style="display:none;">⏺️ הקלטה</button>
       <span id="tp-record-timer" style="display:none;"></span>
       <span id="tp-caption-status" style="display:none;"></span>
+      <button type="button" id="tp-download-srt" style="display:none;">📝 הורדת כתוביות (SRT)</button>
       <button type="button" id="tp-playpause">⏸️ עצירה</button>
       <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
       <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
@@ -2153,6 +2163,47 @@ ${excludeLine}
   // Note: no website can draw over a phone's separate native camera app —
   // this brings the camera into the tool itself instead, so the prompter
   // text and your own live video sit together, and can be recorded here.
+  const tpRotatePreview = document.getElementById('tp-rotate-preview');
+  const tpRotateWrap = document.getElementById('tp-rotate-wrap');
+  const tpRotateLeft = document.getElementById('tp-rotate-left');
+  const tpRotateRight = document.getElementById('tp-rotate-right');
+  let tpRotationDeg = 0; // 0, 90, 180, 270 — the user confirms this visually before recording
+  let tpPreviewRafId = null;
+
+  // מצייר פריים אחד עם הסיבוב הנתון - בשימוש הן בתצוגה הקטנה לאישור והן
+  // בהקלטה בפועל, כדי שמה שהמשתמש מאשר יהיה בדיוק מה שנרשם בקובץ.
+  function tpDrawRotatedFrame(ctx, canvasW, canvasH, rawW, rawH, rotationDeg){
+    ctx.save();
+    ctx.translate(canvasW/2, canvasH/2);
+    ctx.rotate(rotationDeg * Math.PI / 180);
+    ctx.drawImage(tpCameraVideo, -rawW/2, -rawH/2, rawW, rawH);
+    ctx.restore();
+  }
+  function tpCanvasDimsForRotation(rawW, rawH, rotationDeg){
+    const swapped = (rotationDeg === 90 || rotationDeg === 270);
+    return swapped ? { w: rawH, h: rawW } : { w: rawW, h: rawH };
+  }
+
+  function tpPreviewTick(){
+    if(!tpCameraStream) return;
+    const rawW = tpCameraVideo.videoWidth || 720;
+    const rawH = tpCameraVideo.videoHeight || 1280;
+    const dims = tpCanvasDimsForRotation(rawW, rawH, tpRotationDeg);
+    // ה-canvas הקטן קבוע בגודלו (60x107 בתצוגה) - מציירים לתוכו בסקאלה מתאימה
+    const ctx = tpRotatePreview.getContext('2d');
+    const scale = Math.min(tpRotatePreview.width/dims.w, tpRotatePreview.height/dims.h);
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.clearRect(0,0,tpRotatePreview.width,tpRotatePreview.height);
+    ctx.save();
+    ctx.translate((tpRotatePreview.width - dims.w*scale)/2, (tpRotatePreview.height - dims.h*scale)/2);
+    ctx.scale(scale, scale);
+    tpDrawRotatedFrame(ctx, dims.w, dims.h, rawW, rawH, tpRotationDeg);
+    ctx.restore();
+    tpPreviewRafId = requestAnimationFrame(tpPreviewTick);
+  }
+  tpRotateLeft.addEventListener('click', ()=>{ tpRotationDeg = (tpRotationDeg + 270) % 360; });
+  tpRotateRight.addEventListener('click', ()=>{ tpRotationDeg = (tpRotationDeg + 90) % 360; });
+
   async function tpStartCamera(){
     try{
       tpCameraStream = await navigator.mediaDevices.getUserMedia({
@@ -2164,12 +2215,16 @@ ${excludeLine}
       tpCameraToggle.textContent = '🎥 כיבוי מצלמה';
       tpCameraToggle.classList.add('active');
       tpRecordToggle.style.display = 'inline-block';
+      tpRotationDeg = 0;
+      tpRotateWrap.style.display = 'flex';
+      tpPreviewTick();
     }catch(err){
       console.error('Camera access failed:', err);
       showError('לא הצלחתי לקבל גישה למצלמה (' + (err && err.message ? err.message : 'שגיאה') + '). ודאו שאישרתם הרשאת מצלמה לדפדפן.');
     }
   }
   function tpStopCamera(){
+    if(tpPreviewRafId) cancelAnimationFrame(tpPreviewRafId);
     if(tpCameraStream){
       tpCameraStream.getTracks().forEach(t=>t.stop());
       tpCameraStream = null;
@@ -2179,6 +2234,7 @@ ${excludeLine}
     tpCameraToggle.textContent = '🎥 הפעלת מצלמה';
     tpCameraToggle.classList.remove('active');
     tpRecordToggle.style.display = 'none';
+    tpRotateWrap.style.display = 'none';
   }
   tpCameraToggle.addEventListener('click', ()=>{
     tpCameraStream ? tpStopCamera() : tpStartCamera();
@@ -2226,6 +2282,7 @@ ${excludeLine}
     tpRecording = true;
     tpCurrentCaption = '';
     tpTranscriptSegments = [];
+    document.getElementById('tp-download-srt').style.display = 'none';
     let lastSegmentEnd = 0;
 
     // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו בדיוק
@@ -2276,11 +2333,31 @@ ${excludeLine}
       capStatusEl.textContent = '⚠️ כתוביות: לא נתמך בדפדפן זה';
     }
 
-    // --- הקלטה ישירה של הזרם הגולמי (וידאו+שמע), בלי קנבס - זה מה שנתן
-    //     אוריינטציה נכונה בעבר, ונשארים איתו כדי לא לסכן את זה שוב. ---
+    // --- הקלטה: מציירים כל פריים על קנבס באמצעות בדיוק אותו סיבוב שהמשתמש
+    //     אישר ויזואלית בתצוגה הקטנה - אין כאן שום ניחוש, זה בדיוק מה שהוא ראה. ---
+    if(tpPreviewRafId) cancelAnimationFrame(tpPreviewRafId); // עוצרים את תצוגת האישור הקטנה, ההקלטה מציירת בעצמה עכשיו
+    const rawW = tpCameraVideo.videoWidth || 720;
+    const rawH = tpCameraVideo.videoHeight || 1280;
+    const dims = tpCanvasDimsForRotation(rawW, rawH, tpRotationDeg);
+    const canvas = document.createElement('canvas');
+    canvas.width = dims.w;
+    canvas.height = dims.h;
+    const ctx = canvas.getContext('2d');
+
+    function drawFrame(){
+      if(!tpRecording) return;
+      tpDrawRotatedFrame(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg);
+      requestAnimationFrame(drawFrame);
+    }
+    drawFrame();
+
+    const canvasStream = canvas.captureStream(30);
+    const audioTrack = tpCameraStream.getAudioTracks()[0];
+    if(audioTrack) canvasStream.addTrack(audioTrack);
+
     tpRecordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    tpMediaRecorder = new MediaRecorder(tpCameraStream, { mimeType });
+    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = ()=>{
       tpRecording = false;
@@ -2288,32 +2365,22 @@ ${excludeLine}
         try{ tpRecognition.onend = null; tpRecognition.stop(); }catch(e){}
         tpRecognition = null;
       }
-      const stamp = Date.now();
       const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'reel-' + stamp + '.webm';
+      a.download = 'reel-' + Date.now() + '.webm';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       setTimeout(()=> URL.revokeObjectURL(url), 5000);
 
-      // קובץ כתוביות נפרד - אפשר לייבא אותו יחד עם הווידאו לכל עורך (CapCut וכו')
+      // כתוביות: כפתור נפרד שהמשתמש לוחץ עליו בעצמו - הרבה דפדפנים בטלפון
+      // חוסמים הורדה שנייה שמופעלת אוטומטית, לכן זו פעולה נפרדת ומודעת.
       if(tpTranscriptSegments.length > 0){
-        const srt = tpBuildSrt(tpTranscriptSegments);
-        const srtBlob = new Blob([srt], { type: 'text/plain' });
-        const srtUrl = URL.createObjectURL(srtBlob);
-        const a2 = document.createElement('a');
-        a2.href = srtUrl;
-        a2.download = 'reel-' + stamp + '.srt';
-        setTimeout(()=>{
-          document.body.appendChild(a2);
-          a2.click();
-          document.body.removeChild(a2);
-          setTimeout(()=> URL.revokeObjectURL(srtUrl), 5000);
-        }, 400); // עיכוב קטן כדי שהדפדפן לא יחסום שתי הורדות בבת אחת
+        document.getElementById('tp-download-srt').style.display = 'inline-block';
       }
+      if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
     };
     tpMediaRecorder.start();
 
@@ -2327,6 +2394,19 @@ ${excludeLine}
     tpRecordToggle.classList.add('recording');
     tpStart(); // גם מתחילים לגלול אוטומטית עם תחילת ההקלטה
   }
+  document.getElementById('tp-download-srt').addEventListener('click', ()=>{
+    if(tpTranscriptSegments.length === 0) return;
+    const srt = tpBuildSrt(tpTranscriptSegments);
+    const srtBlob = new Blob([srt], { type: 'text/plain' });
+    const srtUrl = URL.createObjectURL(srtBlob);
+    const a = document.createElement('a');
+    a.href = srtUrl;
+    a.download = 'reel-captions-' + Date.now() + '.srt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=> URL.revokeObjectURL(srtUrl), 5000);
+  });
   function tpStopRecording(){
     tpRecording = false;
     if(tpMediaRecorder && tpMediaRecorder.state !== 'inactive') tpMediaRecorder.stop();
