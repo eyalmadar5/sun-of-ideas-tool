@@ -2279,6 +2279,59 @@ ${excludeLine}
     ctx.drawImage(tpCameraVideo, -drawW/2, -drawH/2, drawW, drawH);
     ctx.restore();
   }
+
+  // --- גרסה חלופית להקלטה: מסובבת את הפיקסלים עצמם (בלי ctx.rotate/transform בכלל)
+  //     במקום להסתמך על טרנספורם של הקונטקסט. יש דפדפנים/מכשירים ידועים שבהם
+  //     canvas.captureStream() לא תמיד לוכד נכון קנבס שצויר עם ctx.rotate(),
+  //     למרות שהתצוגה על המסך עצמו נראית תקינה - זו דרך עוקפת שמבטיחה תוצאה
+  //     נכונה גם במקרה כזה, כי הקנבס המוקלט בפועל אף פעם לא משתמש בטרנספורם. ---
+  let _tpSrcCanvas = null, _tpSrcCtx = null;
+  function tpDrawRotatedFramePixels(destCtx, canvasW, canvasH, rawW, rawH, rotationDeg, mirror){
+    if(!_tpSrcCanvas){
+      _tpSrcCanvas = document.createElement('canvas');
+      _tpSrcCtx = _tpSrcCanvas.getContext('2d', { willReadFrequently: true });
+    }
+    // מציירים את הפריים הגולמי (בלי סיבוב) בגודלו הטבעי, כדי לקרוא ממנו פיקסלים
+    _tpSrcCanvas.width = rawW;
+    _tpSrcCanvas.height = rawH;
+    _tpSrcCtx.setTransform(1,0,0,1,0,0);
+    _tpSrcCtx.drawImage(tpCameraVideo, 0, 0, rawW, rawH);
+    const srcImg = _tpSrcCtx.getImageData(0, 0, rawW, rawH);
+    const src = srcImg.data;
+
+    const rotated90 = (rotationDeg === 90 || rotationDeg === 270);
+    const rotW = rotated90 ? rawH : rawW;
+    const rotH = rotated90 ? rawW : rawH;
+    const outImg = destCtx.createImageData(rotW, rotH);
+    const dst = outImg.data;
+
+    for(let y = 0; y < rawH; y++){
+      for(let x = 0; x < rawW; x++){
+        const srcIdx = (y * rawW + x) * 4;
+        let dx, dy;
+        if(rotationDeg === 90){ dx = rawH - 1 - y; dy = x; }
+        else if(rotationDeg === 180){ dx = rawW - 1 - x; dy = rawH - 1 - y; }
+        else if(rotationDeg === 270){ dx = y; dy = rawW - 1 - x; }
+        else { dx = x; dy = y; } // 0
+        if(mirror) dx = rotW - 1 - dx;
+        const dstIdx = (dy * rotW + dx) * 4;
+        dst[dstIdx] = src[srcIdx]; dst[dstIdx+1] = src[srcIdx+1];
+        dst[dstIdx+2] = src[srcIdx+2]; dst[dstIdx+3] = src[srcIdx+3];
+      }
+    }
+
+    // ממלאים את כל שטח קנבס היעד (scale-to-cover), בלי טרנספורם - putImageData
+    // עצמו לא נותן קנה מידה, אז מציירים את תוצאת הסיבוב לקנבס ביניים ואז
+    // מעתיקים עם drawImage (שכן תומך בקנה מידה) לקנבס הסופי - עדיין בלי rotate().
+    const rotCanvas = document.createElement('canvas');
+    rotCanvas.width = rotW; rotCanvas.height = rotH;
+    rotCanvas.getContext('2d').putImageData(outImg, 0, 0);
+
+    destCtx.setTransform(1,0,0,1,0,0);
+    const scale = Math.max(canvasW / rotW, canvasH / rotH);
+    const drawW = rotW * scale, drawH = rotH * scale;
+    destCtx.drawImage(rotCanvas, (canvasW-drawW)/2, (canvasH-drawH)/2, drawW, drawH);
+  }
   function tpCanvasDimsForRotation(rawW, rawH, rotationDeg){
     const swapped = (rotationDeg === 90 || rotationDeg === 270);
     return swapped ? { w: rawH, h: rawW } : { w: rawW, h: rawH };
@@ -2594,7 +2647,7 @@ ${excludeLine}
 
     function drawFrame(){
       if(!tpRecording) return;
-      tpDrawRotatedFrame(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg, tpCameraMirror);
+      tpDrawRotatedFramePixels(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg, tpCameraMirror);
       requestAnimationFrame(drawFrame);
     }
     drawFrame();
