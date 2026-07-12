@@ -2582,14 +2582,26 @@ Write one viral reel script in English about the specific topic, for a US audien
       const indexed = {};
       segments.forEach((s, i)=>{ indexed[i] = s.text; });
 
-      const system = `אתם עורכי תמלול מקצועיים. קיבלתם תמלול אוטומטי (מזיהוי דיבור, לא מדויק לגמרי) של מישהו שהקריא תסריט נתון, ולעיתים גם הוסיף מילים משלו.
+      let system, user;
+      if(isEnglish()){
+        system = `You are a professional transcript editor. You received an automatic transcript (from speech recognition, not fully accurate) of someone reading a given script, sometimes also adding their own words.
+Task, for every sentence in the map you receive:
+1. If it contains a word that's likely a speech-recognition error of a word from the script (sounds similar, context fits the script) - correct it to the exact word from the script.
+2. Even if a word doesn't exactly match the script (e.g. the speaker improvised) - but it's itself a spelling error/non-existent word - correct it to the most likely real word it represents, based on the sentence's context. This should always be the most plausible word the speaker meant, not a different word.
+3. If the speaker added a whole sentence/idea of their own unrelated to the script - do not delete it or change its content/meaning, only fix clear spelling errors within it if any.
+4. Do not delete sentences, do not add new sentences, and do not change the sentence split.
+Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the same number you received (as a string), and the value is the corrected text of that sentence. You must return all the keys you received, without adding or removing any.`;
+        user = `The original script the speaker intended to read:\n${scriptText}\n\nThe recognized transcript, as a JSON object (key = sentence number, value = recognized text):\n${JSON.stringify(indexed)}\n\nReturn a corrected JSON object with exactly the same keys.`;
+      } else {
+        system = `אתם עורכי תמלול מקצועיים. קיבלתם תמלול אוטומטי (מזיהוי דיבור, לא מדויק לגמרי) של מישהו שהקריא תסריט נתון, ולעיתים גם הוסיף מילים משלו.
 המשימה, לכל משפט במפה שתקבלו:
 1. אם יש בו מילה שהיא כנראה טעות זיהוי דיבור של מילה מהתסריט (נשמעת דומה, ההקשר מתאים לתסריט) - תקנו אותה למילה המדויקת מהתסריט.
 2. גם אם מילה לא תואמת בדיוק לתסריט (למשל הדובר אילתר) - אבל היא כשלעצמה שגיאת כתיב/מילה לא קיימת בעברית (למשל "קלב" שאין לו משמעות) - תקנו אותה למילה האמיתית והסבירה ביותר שהיא מייצגת (למשל "כלב"), לפי ההקשר של המשפט. זו תמיד צריכה להיות המילה הכי סבירה שהדובר התכוון אליה, לא מילה אחרת.
 3. אם הדובר הוסיף משפט/רעיון שלם משלו שלא קשור לתסריט בכלל - אל תמחקו אותו ואל תשנו את התוכן/המשמעות שלו, רק תקנו שגיאות כתיב ברורות בתוכו אם יש.
 4. אל תמחקו משפטים, אל תוסיפו משפטים חדשים, ואל תשנו את החלוקה למשפטים.
 השיבו אך ורק אובייקט JSON שטוח (לא מקונן), שבו כל מפתח הוא בדיוק אותו המספר שקיבלתם (כמחרוזת), והערך הוא הטקסט המתוקן של אותו משפט. חובה להחזיר את כל המפתחות שקיבלתם, בלי להוסיף או להוריד אף אחד.`;
-      const user = `התסריט המקורי שהדובר התכוון להקריא:\n${scriptText}\n\nהתמלול שזוהה, כאובייקט JSON (מפתח = מספר משפט, ערך = הטקסט שזוהה):\n${JSON.stringify(indexed)}\n\nהחזירו אובייקט JSON מתוקן עם בדיוק אותם מפתחות.`;
+        user = `התסריט המקורי שהדובר התכוון להקריא:\n${scriptText}\n\nהתמלול שזוהה, כאובייקט JSON (מפתח = מספר משפט, ערך = הטקסט שזוהה):\n${JSON.stringify(indexed)}\n\nהחזירו אובייקט JSON מתוקן עם בדיוק אותם מפתחות.`;
+      }
       const resp = await callClaude(system, user, false);
       const jsonStr = extractJSONObject(resp.text);
       if(!jsonStr) return segments; // לא הצלחנו לפרש - לא נוגעים, ממשיכים עם התמלול הגולמי
@@ -2833,6 +2845,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       try{
         const form = new FormData();
         form.append('file', rawBlob, 'audio.webm');
+        form.append('language', isEnglish() ? 'en' : 'he');
         const res = await fetch(WHISPER_ENDPOINT, { method: 'POST', body: form });
         if(!res.ok){
           const bodyText = await res.text().catch(()=>'(אין פרטים נוספים)');
