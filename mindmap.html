@@ -2312,6 +2312,26 @@ ${excludeLine}
     const pad = (n,len)=> String(n).padStart(len||2,'0');
     return pad(h)+':'+pad(m)+':'+pad(s)+','+pad(ms,3);
   }
+  // משווה את התמלול הגולמי מול התסריט המקורי, ומתקן מילים שנשמעות כמו טעויות
+  // זיהוי דיבור של מילות תסריט (לפי הקשר, לא רק צליל) - אבל לא נוגע במשפטים
+  // או מילים שהדובר הוסיף מעצמו ואינם בתסריט בכלל.
+  async function tpAutoCorrectSegments(segments, scriptText){
+    try{
+      const system = `אתם עוזרים לתקן תמלול אוטומטי (מזיהוי דיבור) על סמך תסריט מקורי שהדובר התכוון להקריא.
+המשימה: זהו מילים בתמלול שהן קרוב לוודאי טעויות זיהוי דיבור של מילים שנמצאות בתסריט (בהתבסס על דמיון צלילי/הקשרי), ותקנו אותן להתאים בדיוק לתסריט.
+חשוב מאוד: אם הדובר הוסיף משפטים או מילים משלו שלא מופיעים בתסריט בכלל (אלתור/תוספת) - אל תמחקו, אל תשנו ואל "תתקנו" אותם לכיוון התסריט. השאירו אותם בדיוק כמו שזוהו. אל תוסיפו תוכן חדש שלא היה בתמלול המקורי.
+השיבו אך ורק מערך JSON של מחרוזות (strings), באותו סדר ובאותו מספר איברים בדיוק כמו התמלול שקיבלתם - שום דבר נוסף.`;
+      const user = `התסריט המקורי:\n${scriptText}\n\nהתמלול שזוהה (מערך JSON, כל איבר משפט אחד):\n${JSON.stringify(segments.map(s=>s.text))}\n\nהחזירו מערך JSON מתוקן, באותו אורך בדיוק.`;
+      const resp = await callClaude(system, user, false);
+      const parsed = extractJSONArray(resp.text);
+      if(!Array.isArray(parsed) || parsed.length !== segments.length) return segments; // לא בטוח - לא נוגעים
+      return segments.map((seg, i)=> ({ ...seg, text: (typeof parsed[i] === 'string' && parsed[i].trim()) ? parsed[i].trim() : seg.text }));
+    }catch(err){
+      console.warn('Auto-correct against script failed, using raw transcript:', err);
+      return segments; // כשל בתיקון האוטומטי לא אמור לעצור את התהליך - פשוט ממשיכים עם התמלול הגולמי
+    }
+  }
+
   function tpShowCaptionReview(segments){
     return new Promise((resolve)=>{
       const listEl = document.getElementById('tp-caption-review-list');
@@ -2523,8 +2543,16 @@ ${excludeLine}
           capStatusEl.textContent = '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
           downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
         } else {
+          capStatusEl.textContent = '🤖 משווה מול התסריט ומתקן...';
+          let correctedSegments = segments;
+          const scriptNode = scriptPanelNodeId ? state.nodes[scriptPanelNodeId] : null;
+          const rs = scriptNode ? scriptNode.reelScript : null;
+          if(rs && rs.status === 'ready'){
+            const scriptText = [rs.hook, rs.body, rs.cta].filter(Boolean).join('\n');
+            correctedSegments = await tpAutoCorrectSegments(segments, scriptText);
+          }
           capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
-          const editedSegments = await tpShowCaptionReview(segments);
+          const editedSegments = await tpShowCaptionReview(correctedSegments);
           if(!editedSegments || editedSegments.length === 0){
             capStatusEl.textContent = 'הורדת וידאו בלי כתוביות';
             downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
