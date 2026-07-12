@@ -1938,19 +1938,51 @@ ${excludeLine}
   }
 
   const REEL_STYLES = [
-    { key:'story', label:'📖 סיפור אישי', desc:'רגע אמיתי אחד, ואז לקח שמתחבר לקריאה לפעולה', prompt:'כתבו את הריל כסיפור אישי קצר: התחילו ברגע קונקרטי אחד (לא כללי), עברו דרך קושי או תובנה, וסיימו בלקח שמתחבר ישירות לקריאה לפעולה.' },
-    { key:'tips', label:'📝 טיפים מהירים', desc:'"3 דברים שאף אחד לא אומר לך על..."', prompt:'כתבו את הריל כרשימת טיפים ממוספרת, קצרה וקצבית (בסגנון "3 דברים ש..."), כשכל טיפ הוא משפט אחד קצר וברור.' },
-    { key:'transformation', label:'🔄 לפני ואחרי', desc:'ניגודיות דרמטית בין מצב ישן לחדש', prompt:'כתבו את הריל כניגודיות דרמטית בין "לפני" ל"אחרי" - התחילו במצב הבעייתי הישן, והראו בבירור את השינוי הקונקרטי שקרה.' },
-    { key:'mythbust', label:'💥 מיתוס מול אמת', desc:'סותר אמונה רווחת בפתיחה שנויה במחלוקת', prompt:'כתבו את הריל כסתירת מיתוס או אמונה רווחת - פתחו בטענה שנויה במחלוקת שסותרת את מה שרוב האנשים חושבים, ואז הסבירו בקצרה למה זה נכון.' },
-    { key:'pov', label:'🎭 POV / סיטואציה מוכרת', desc:'רגע שהצופה מזהה מיד מהחיים שלו', prompt:'כתבו את הריל בסגנון POV - תארו רגע ספציפי ומוכר שהצופה מזהה מיד מהחיים שלו, מנקודת המבט של הדובר.' }
+    { key:'story', label:'📖 סיפור אישי', desc:'רגע אמיתי אחד, ואז לקח שמתחבר לקריאה לפעולה', prompt:'כתבו את הריל כסיפור אישי קצר: התחילו ברגע קונקרטי אחד (לא כללי), עברו דרך קושי או תובנה, וסיימו בלקח שמתחבר ישירות לקריאה לפעולה.',
+      labelEn:'📖 Personal story', descEn:'One real moment, then a lesson tied to the CTA', promptEn:'Write the reel as a short personal story: start with one concrete moment (not generic), move through a struggle or insight, and end with a lesson that ties directly into the call to action.' },
+    { key:'tips', label:'📝 טיפים מהירים', desc:'"3 דברים שאף אחד לא אומר לך על..."', prompt:'כתבו את הריל כרשימת טיפים ממוספרת, קצרה וקצבית (בסגנון "3 דברים ש..."), כשכל טיפ הוא משפט אחד קצר וברור.',
+      labelEn:'📝 Quick tips', descEn:'"3 things nobody tells you about..."', promptEn:'Write the reel as a short, punchy numbered tips list (style: "3 things..."), where each tip is one short, clear sentence.' },
+    { key:'transformation', label:'🔄 לפני ואחרי', desc:'ניגודיות דרמטית בין מצב ישן לחדש', prompt:'כתבו את הריל כניגודיות דרמטית בין "לפני" ל"אחרי" - התחילו במצב הבעייתי הישן, והראו בבירור את השינוי הקונקרטי שקרה.',
+      labelEn:'🔄 Before and after', descEn:'Dramatic contrast between old and new state', promptEn:'Write the reel as a dramatic before/after contrast - start with the old problematic state, and clearly show the concrete change that happened.' },
+    { key:'mythbust', label:'💥 מיתוס מול אמת', desc:'סותר אמונה רווחת בפתיחה שנויה במחלוקת', prompt:'כתבו את הריל כסתירת מיתוס או אמונה רווחת - פתחו בטענה שנויה במחלוקת שסותרת את מה שרוב האנשים חושבים, ואז הסבירו בקצרה למה זה נכון.',
+      labelEn:'💥 Myth vs truth', descEn:'Contradicts a common belief with a controversial opener', promptEn:'Write the reel as busting a myth or common belief - open with a controversial claim that contradicts what most people think, then briefly explain why it\'s true.' },
+    { key:'pov', label:'🎭 POV / סיטואציה מוכרת', desc:'רגע שהצופה מזהה מיד מהחיים שלו', prompt:'כתבו את הריל בסגנון POV - תארו רגע ספציפי ומוכר שהצופה מזהה מיד מהחיים שלו, מנקודת המבט של הדובר.',
+      labelEn:'🎭 POV / familiar situation', descEn:'A moment the viewer instantly recognizes from their own life', promptEn:'Write the reel in POV style - describe a specific, familiar moment the viewer instantly recognizes from their own life, from the speaker\'s point of view.' }
   ];
 
   async function fetchReelScript(rootText, path, styleKey){
     const branchLine = path.join(' > ');
     const specificTopic = path[path.length - 1];
     const styleObj = REEL_STYLES.find(s => s.key === styleKey);
-    const styleLine = styleObj ? `\n9. סגנון נבחר לריל הזה: ${styleObj.prompt}` : '';
-    const system = `אתם קופירייטר/ית ואסטרטג/ית תוכן דיגיטלי מומחה/ית בכתיבת תסריטים לסרטוני רילס/רילים קצרים וויראליים (טיקטוק, אינסטגרם רילס, פייסבוק רילס).
+    let system, user;
+    if(isEnglish()){
+      const styleLine = styleObj ? `\n9. Chosen style for this reel: ${styleObj.promptEn}` : '';
+      system = `You are an expert copywriter and digital content strategist specializing in writing scripts for short viral reels (TikTok, Instagram Reels, Facebook Reels) for a US audience.
+Mandatory principles you must apply:
+1. Hook: the first 2-3 seconds must stop the scroll - an intriguing question, a surprising claim, or a dramatic opener. No unnecessary intros.
+2. Value: the content must deliver real value - a concrete tip, insight, or an emotionally moving story - not generic filler talk.
+3. A single, clear, focused call to action (CTA) at the end - not multiple different CTAs.
+4. Length: the whole script (hook + body + CTA) must be readable aloud within about one minute at a natural pace (roughly 130-160 words total, no more).
+5. Spoken, direct, second-person language, as if talking straight to the camera - not written/formal language.
+6. If you can search online, check what reel styles, hooks, and content structures are working right now in this niche for the US market, and incorporate that into the script.
+7. If the specific topic reflects a question, pain point, fear, or concern of the audience (not just a neutral tip) - start the hook from genuine empathy for that feeling (without minimizing it), then give concrete relief or an answer in the body - not just a generic "it's okay" statement.
+8. Also, try to find via web search one real, existing reel/TikTok video relevant to this specific topic with genuinely high engagement (at least tens of thousands of views/likes, or hundreds of comments or more). This is just an inspiration link - do not invent a link or engagement numbers. If you didn't find a real, search-verified link, leave referenceVideo as null.${styleLine}
+Reply ONLY with the following JSON object structure, no extra text before or after, no markdown:
+{"hook": "...", "body": "...", "cta": "...", "shots": ["...", "..."], "caption": "...", "hashtags": ["...", "..."], "referenceVideo": {"url": "...", "platform": "...", "engagementNote": "..."} }
+- hook: 1-2 sentences in English, ready to be read aloud, for the opening moment
+- body: the full script body, ready to be read aloud word-for-word, in English
+- cta: one short call-to-action sentence, in English
+- shots: an array of 3-6 short filming directions in English (up to 10 words each) describing what to film or show in each segment
+- caption: a short caption for the post itself, 1-2 sentences in English
+- hashtags: an array of 5-8 relevant keywords/hashtags (without the # sign, we add it in display)
+- referenceVideo: either an object with a real link found via search (url, platform, engagementNote in English describing the engagement), or null if no sufficiently real link was found`;
+      user = `Business core topic: ${rootText}
+Specific topic for the reel script: ${specificTopic}
+Full branch chain up to this topic: ${branchLine}
+Write one viral reel script in English about the specific topic, for a US audience, following all the guidelines in the system prompt. Return ONLY a JSON object.`;
+    } else {
+      const styleLine = styleObj ? `\n9. סגנון נבחר לריל הזה: ${styleObj.prompt}` : '';
+      system = `אתם קופירייטר/ית ואסטרטג/ית תוכן דיגיטלי מומחה/ית בכתיבת תסריטים לסרטוני רילס/רילים קצרים וויראליים (טיקטוק, אינסטגרם רילס, פייסבוק רילס).
 עקרונות חובה שאתם חייבים ליישם:
 1. הוק (Hook): 2-3 השניות הראשונות חייבות לעצור את הגלילה - שאלה מסקרנת, טענה מפתיעה, או פתיח דרמטי. בלי הקדמות מיותרות.
 2. ערך: התוכן חייב לתת ערך אמיתי - טיפ קונקרטי, תובנה, או סיפור שמניע רגש - לא סתם דיבור כללי.
@@ -1969,10 +2001,11 @@ ${excludeLine}
 - caption: כיתוב קצר לפוסט עצמו, 1-2 משפטים בעברית
 - hashtags: מערך של 5-8 מילות מפתח/האשטגים רלוונטיים (בלי סימן #, נוסיף אותו בתצוגה)
 - referenceVideo: או אובייקט עם קישור אמיתי שנמצא בחיפוש (url, platform, engagementNote בעברית שמתאר את המעורבות), או null אם לא נמצא קישור אמיתי מספק`;
-    const user = `נושא הליבה של העסק: ${rootText}
+      user = `נושא הליבה של העסק: ${rootText}
 הנושא הספציפי לתסריט הריל: ${specificTopic}
 שרשרת הענף המלאה עד לנושא הזה: ${branchLine}
 כתבו תסריט אחד לריל ויראלי בעברית על הנושא הספציפי, לפי כל ההנחיות במערכת. החזירו אך ורק JSON object.`;
+    }
 
     try{
       const first = await callClaude(system, user, true);
@@ -1985,7 +2018,7 @@ ${excludeLine}
     const second = await callClaude(system, user, false);
     const parsed2 = parseScriptJSON(second.text);
     if(!parsed2){
-      throw new Error('לא הצלחתי לפרש את התסריט מהמודל');
+      throw new Error(isEnglish() ? 'Could not parse the script from the model' : 'לא הצלחתי לפרש את התסריט מהמודל');
     }
     return Object.assign({}, parsed2, { usedSearch: false, style: styleKey || null });
   }
