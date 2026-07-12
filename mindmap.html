@@ -885,6 +885,7 @@
   // Deploy the small proxy server (see the Cloudflare Worker guide provided
   // alongside this file) and paste its URL here — everything else just works.
   const API_ENDPOINT = "https://sun-of-ideas-proxy.eyalmad.workers.dev/";
+  const WHISPER_ENDPOINT = "https://sun-of-ideas-proxy.eyalmad.workers.dev/transcribe";
 
   // Real per-user history is saved on your own WordPress site (tied to the
   // logged-in account), via a signed token WordPress attaches to this page's
@@ -2245,23 +2246,8 @@ ${excludeLine}
     return (m<10?'0':'')+m+':'+(s<10?'0':'')+s;
   }
 
-  let tpRecognition = null;
   let tpRecording = false;
-  let tpCurrentCaption = '';
-
-  function tpWrapCaptionLines(ctx, text, maxWidth){
-    const words = text.split(' ');
-    let lines = [], line = '';
-    words.forEach(w=>{
-      const test = line ? line + ' ' + w : w;
-      if(ctx.measureText(test).width > maxWidth && line){ lines.push(line); line = w; }
-      else line = test;
-    });
-    if(line) lines.push(line);
-    return lines.slice(-2); // כתוביות רגילות מציגות עד שתי שורות בכל רגע נתון
-  }
-
-  let tpTranscriptSegments = []; // {text, startSec, endSec} — built from real speech, for the .srt file
+  let tpTranscriptSegments = []; // {text, startSec, endSec} — built from Whisper after recording, for the .srt file
 
   function tpFormatSrtTime(sec){
     const h = Math.floor(sec/3600);
@@ -2280,58 +2266,10 @@ ${excludeLine}
   function tpStartRecording(){
     if(!tpCameraStream) return;
     tpRecording = true;
-    tpCurrentCaption = '';
     tpTranscriptSegments = [];
     document.getElementById('tp-download-srt').style.display = 'none';
-    let lastSegmentEnd = 0;
-
-    // --- כתוביות אמיתיות: זיהוי דיבור חי בזמן ההקלטה, כדי שהכתוביות ישקפו בדיוק
-    //     מה שנאמר בפועל. בונים מזה קובץ כתוביות (.srt) נפרד שיורד יחד עם הווידאו,
-    //     במקום "לצייר" אותן לתוך הווידאו עצמו - זה נמנע לגמרי מבעיות סיבוב/עיוות
-    //     שקורות כשמנסים לשחזר את הפריים הגולמי של המצלמה על קנבס. ---
     const capStatusEl = document.getElementById('tp-caption-status');
-    capStatusEl.style.display = 'inline';
-    capStatusEl.textContent = '💬 כתוביות: מאתחל...';
-    const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(SpeechRecognitionCtor){
-      tpRecognition = new SpeechRecognitionCtor();
-      tpRecognition.lang = 'he-IL';
-      tpRecognition.continuous = true;
-      tpRecognition.interimResults = true;
-      tpRecognition.onstart = ()=>{ capStatusEl.textContent = '💬 כתוביות: מאזין...'; };
-      tpRecognition.onresult = (event)=>{
-        let interimText = '';
-        for(let i = event.resultIndex; i < event.results.length; i++){
-          const result = event.results[i];
-          const transcript = result[0].transcript;
-          if(result.isFinal){
-            const nowSec = (Date.now() - tpRecordStartTime) / 1000;
-            const text = transcript.trim();
-            if(text){
-              tpTranscriptSegments.push({ text, startSec: lastSegmentEnd, endSec: nowSec });
-              lastSegmentEnd = nowSec;
-            }
-          } else {
-            interimText += transcript;
-          }
-        }
-        tpCurrentCaption = interimText.trim();
-        if(tpCurrentCaption) capStatusEl.textContent = '💬 ' + tpCurrentCaption.slice(-40);
-      };
-      tpRecognition.onerror = (e)=>{
-        console.warn('Speech recognition error:', e.error);
-        capStatusEl.textContent = '⚠️ כתוביות: שגיאה (' + e.error + ')';
-      };
-      tpRecognition.onend = ()=>{
-        if(tpRecording){ try{ tpRecognition.start(); }catch(e){} } // חלק מהדפדפנים עוצרים לבד אחרי זמן - מפעילים שוב
-      };
-      try{ tpRecognition.start(); }catch(e){
-        console.warn('Could not start speech recognition:', e);
-        capStatusEl.textContent = '⚠️ כתוביות: לא הופעלו';
-      }
-    } else {
-      capStatusEl.textContent = '⚠️ כתוביות: לא נתמך בדפדפן זה';
-    }
+    capStatusEl.style.display = 'none'; // יוצג רק אחרי העצירה, כשמתחילים לתמלל בפועל
 
     // --- הקלטה: מציירים כל פריים על קנבס באמצעות בדיוק אותו סיבוב שהמשתמש
     //     אישר ויזואלית בתצוגה הקטנה - אין כאן שום ניחוש, זה בדיוק מה שהוא ראה. ---
@@ -2359,12 +2297,8 @@ ${excludeLine}
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
     tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
-    tpMediaRecorder.onstop = ()=>{
+    tpMediaRecorder.onstop = async ()=>{
       tpRecording = false;
-      if(tpRecognition){
-        try{ tpRecognition.onend = null; tpRecognition.stop(); }catch(e){}
-        tpRecognition = null;
-      }
       const blob = new Blob(tpRecordedChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -2374,13 +2308,38 @@ ${excludeLine}
       a.click();
       document.body.removeChild(a);
       setTimeout(()=> URL.revokeObjectURL(url), 5000);
-
-      // כתוביות: כפתור נפרד שהמשתמש לוחץ עליו בעצמו - הרבה דפדפנים בטלפון
-      // חוסמים הורדה שנייה שמופעלת אוטומטית, לכן זו פעולה נפרדת ומודעת.
-      if(tpTranscriptSegments.length > 0){
-        document.getElementById('tp-download-srt').style.display = 'inline-block';
-      }
       if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
+
+      // --- כתוביות אמיתיות: שולחים את ההקלטה עצמה לתמלול אחרי שההקלטה
+      //     הסתיימה (לא בזמן אמת) - זה הרבה יותר אמין מזיהוי דיבור חי
+      //     בתוך iframe, שלא תמיד עובד בכלל. ---
+      capStatusEl.style.display = 'inline';
+      capStatusEl.textContent = '💬 מתמלל את ההקלטה...';
+      try{
+        const form = new FormData();
+        form.append('file', blob, 'audio.webm');
+        const res = await fetch(WHISPER_ENDPOINT, { method: 'POST', body: form });
+        if(!res.ok){
+          const errBody = await res.text();
+          throw new Error('שרת התמלול החזיר שגיאה (' + res.status + ')');
+        }
+        const data = await res.json();
+        const segments = (data.segments || []).map(seg => ({
+          text: (seg.text || '').trim(),
+          startSec: seg.start,
+          endSec: seg.end
+        })).filter(seg => seg.text);
+        if(segments.length === 0){
+          capStatusEl.textContent = '⚠️ לא זוהה דיבור בהקלטה';
+        } else {
+          tpTranscriptSegments = segments;
+          capStatusEl.textContent = '✅ כתוביות מוכנות (' + segments.length + ' משפטים)';
+          document.getElementById('tp-download-srt').style.display = 'inline-block';
+        }
+      }catch(err){
+        console.error('Transcription failed:', err);
+        capStatusEl.textContent = '⚠️ תמלול נכשל (' + (err && err.message ? err.message : 'שגיאה') + ')';
+      }
     };
     tpMediaRecorder.start();
 
