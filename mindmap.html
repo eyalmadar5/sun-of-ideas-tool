@@ -2317,15 +2317,28 @@ ${excludeLine}
   // או מילים שהדובר הוסיף מעצמו ואינם בתסריט בכלל.
   async function tpAutoCorrectSegments(segments, scriptText){
     try{
-      const system = `אתם עוזרים לתקן תמלול אוטומטי (מזיהוי דיבור) על סמך תסריט מקורי שהדובר התכוון להקריא.
-המשימה: זהו מילים בתמלול שהן קרוב לוודאי טעויות זיהוי דיבור של מילים שנמצאות בתסריט (בהתבסס על דמיון צלילי/הקשרי), ותקנו אותן להתאים בדיוק לתסריט.
-חשוב מאוד: אם הדובר הוסיף משפטים או מילים משלו שלא מופיעים בתסריט בכלל (אלתור/תוספת) - אל תמחקו, אל תשנו ואל "תתקנו" אותם לכיוון התסריט. השאירו אותם בדיוק כמו שזוהו. אל תוסיפו תוכן חדש שלא היה בתמלול המקורי.
-השיבו אך ורק מערך JSON של מחרוזות (strings), באותו סדר ובאותו מספר איברים בדיוק כמו התמלול שקיבלתם - שום דבר נוסף.`;
-      const user = `התסריט המקורי:\n${scriptText}\n\nהתמלול שזוהה (מערך JSON, כל איבר משפט אחד):\n${JSON.stringify(segments.map(s=>s.text))}\n\nהחזירו מערך JSON מתוקן, באותו אורך בדיוק.`;
+      const indexed = {};
+      segments.forEach((s, i)=>{ indexed[i] = s.text; });
+
+      const system = `אתם עורכי תמלול מקצועיים. קיבלתם תמלול אוטומטי (מזיהוי דיבור, לא מדויק לגמרי) של מישהו שהקריא תסריט נתון, ולעיתים גם הוסיף מילים משלו.
+המשימה, לכל משפט במפה שתקבלו:
+1. אם יש בו מילה שהיא כנראה טעות זיהוי דיבור של מילה מהתסריט (נשמעת דומה, ההקשר מתאים לתסריט) - תקנו אותה למילה המדויקת מהתסריט.
+2. גם אם מילה לא תואמת בדיוק לתסריט (למשל הדובר אילתר) - אבל היא כשלעצמה שגיאת כתיב/מילה לא קיימת בעברית (למשל "קלב" שאין לו משמעות) - תקנו אותה למילה האמיתית והסבירה ביותר שהיא מייצגת (למשל "כלב"), לפי ההקשר של המשפט. זו תמיד צריכה להיות המילה הכי סבירה שהדובר התכוון אליה, לא מילה אחרת.
+3. אם הדובר הוסיף משפט/רעיון שלם משלו שלא קשור לתסריט בכלל - אל תמחקו אותו ואל תשנו את התוכן/המשמעות שלו, רק תקנו שגיאות כתיב ברורות בתוכו אם יש.
+4. אל תמחקו משפטים, אל תוסיפו משפטים חדשים, ואל תשנו את החלוקה למשפטים.
+השיבו אך ורק אובייקט JSON שטוח (לא מקונן), שבו כל מפתח הוא בדיוק אותו המספר שקיבלתם (כמחרוזת), והערך הוא הטקסט המתוקן של אותו משפט. חובה להחזיר את כל המפתחות שקיבלתם, בלי להוסיף או להוריד אף אחד.`;
+      const user = `התסריט המקורי שהדובר התכוון להקריא:\n${scriptText}\n\nהתמלול שזוהה, כאובייקט JSON (מפתח = מספר משפט, ערך = הטקסט שזוהה):\n${JSON.stringify(indexed)}\n\nהחזירו אובייקט JSON מתוקן עם בדיוק אותם מפתחות.`;
       const resp = await callClaude(system, user, false);
-      const parsed = extractJSONArray(resp.text);
-      if(!Array.isArray(parsed) || parsed.length !== segments.length) return segments; // לא בטוח - לא נוגעים
-      return segments.map((seg, i)=> ({ ...seg, text: (typeof parsed[i] === 'string' && parsed[i].trim()) ? parsed[i].trim() : seg.text }));
+      const jsonStr = extractJSONObject(resp.text);
+      if(!jsonStr) return segments; // לא הצלחנו לפרש - לא נוגעים, ממשיכים עם התמלול הגולמי
+      let parsed;
+      try{ parsed = JSON.parse(jsonStr); }catch(e){ return segments; }
+      if(!parsed || typeof parsed !== 'object') return segments;
+
+      return segments.map((seg, i)=>{
+        const corrected = parsed[String(i)];
+        return { ...seg, text: (typeof corrected === 'string' && corrected.trim()) ? corrected.trim() : seg.text };
+      });
     }catch(err){
       console.warn('Auto-correct against script failed, using raw transcript:', err);
       return segments; // כשל בתיקון האוטומטי לא אמור לעצור את התהליך - פשוט ממשיכים עם התמלול הגולמי
