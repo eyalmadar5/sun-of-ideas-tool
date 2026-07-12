@@ -329,6 +329,36 @@
     display:block;margin-top:10px;background:#c0392b;color:#fff;border:none;
     border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;
   }
+  #tp-caption-review-overlay{
+    position:fixed;inset:0;z-index:220;background:rgba(0,0,0,0.85);
+    display:none;align-items:center;justify-content:center;padding:20px;
+  }
+  #tp-caption-review-panel{
+    background:var(--paper);border-radius:16px;padding:20px;
+    max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;gap:12px;
+  }
+  #tp-caption-review-panel h3{
+    font-family:'Rubik',sans-serif;font-size:16px;color:var(--ink);margin:0 0 4px;text-align:center;
+  }
+  #tp-caption-review-list{overflow-y:auto;flex:1 1 auto;display:flex;flex-direction:column;gap:8px;}
+  .tp-caption-review-row{display:flex;align-items:center;gap:8px;}
+  .tp-caption-review-time{
+    font-family:'Heebo',sans-serif;font-size:11px;color:var(--ink-soft);
+    flex:0 0 auto;min-width:44px;text-align:center;
+  }
+  .tp-caption-review-row input{
+    flex:1 1 auto;font-family:'Rubik',sans-serif;font-size:14px;
+    padding:8px 10px;border-radius:8px;border:1.5px solid var(--line);
+    background:var(--card);color:var(--ink);outline:none;
+  }
+  .tp-caption-review-row input:focus{border-color:var(--sun-deep);}
+  #tp-caption-review-actions{display:flex;gap:10px;padding-top:6px;border-top:1px solid var(--line);}
+  #tp-caption-review-actions button{
+    flex:1 1 auto;font-family:'Heebo',sans-serif;font-weight:700;font-size:13.5px;
+    border-radius:10px;padding:11px 14px;cursor:pointer;border:none;
+  }
+  #tp-caption-review-cancel{background:var(--paper-2);color:var(--ink);}
+  #tp-caption-review-confirm{background:var(--sun-deep);color:#fff;}
   #tp-rotate-wrap{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border-radius:10px;padding:6px 10px;}
   #tp-rotate-preview{border-radius:6px;background:#000;display:block;}
   #tp-rotate-left,#tp-rotate-right{padding:6px 10px !important;font-size:16px !important;}
@@ -834,6 +864,16 @@
     <div id="tp-error-box">
       <div id="tp-error-text"></div>
       <button type="button" id="tp-error-close">סגירה</button>
+    </div>
+    <div id="tp-caption-review-overlay">
+      <div id="tp-caption-review-panel">
+        <h3>בדקו ותקנו את הכתוביות לפני שהן נצרבות</h3>
+        <div id="tp-caption-review-list"></div>
+        <div id="tp-caption-review-actions">
+          <button type="button" id="tp-caption-review-cancel">דלגו על כתוביות</button>
+          <button type="button" id="tp-caption-review-confirm">✅ אישור וצריבה</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2272,6 +2312,51 @@ ${excludeLine}
     const pad = (n,len)=> String(n).padStart(len||2,'0');
     return pad(h)+':'+pad(m)+':'+pad(s)+','+pad(ms,3);
   }
+  function tpShowCaptionReview(segments){
+    return new Promise((resolve)=>{
+      const listEl = document.getElementById('tp-caption-review-list');
+      listEl.innerHTML = '';
+      const inputs = [];
+      segments.forEach(seg=>{
+        const row = document.createElement('div');
+        row.className = 'tp-caption-review-row';
+        const timeLabel = document.createElement('span');
+        timeLabel.className = 'tp-caption-review-time';
+        timeLabel.textContent = tpFormatTime(seg.startSec);
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = seg.text;
+        input.dir = 'rtl';
+        row.appendChild(timeLabel);
+        row.appendChild(input);
+        listEl.appendChild(row);
+        inputs.push(input);
+      });
+      document.getElementById('tp-caption-review-overlay').style.display = 'flex';
+
+      const confirmBtn = document.getElementById('tp-caption-review-confirm');
+      const cancelBtn = document.getElementById('tp-caption-review-cancel');
+      function cleanup(){
+        document.getElementById('tp-caption-review-overlay').style.display = 'none';
+        confirmBtn.removeEventListener('click', onConfirm);
+        cancelBtn.removeEventListener('click', onCancel);
+      }
+      function onConfirm(){
+        const edited = segments
+          .map((seg, i)=> ({ text: inputs[i].value.trim(), startSec: seg.startSec, endSec: seg.endSec }))
+          .filter(s=> s.text);
+        cleanup();
+        resolve(edited);
+      }
+      function onCancel(){
+        cleanup();
+        resolve(null);
+      }
+      confirmBtn.addEventListener('click', onConfirm);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
   function tpShowErrorBox(text){
     document.getElementById('tp-error-text').textContent = text;
     document.getElementById('tp-error-box').style.display = 'block';
@@ -2438,12 +2523,19 @@ ${excludeLine}
           capStatusEl.textContent = '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
           downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
         } else {
-          tpTranscriptSegments = segments;
-          document.getElementById('tp-download-srt').style.display = 'inline-block';
-          capStatusEl.textContent = '🔥 צורב כתוביות לתוך הווידאו...';
-          const finalBlob = await tpBurnInCaptions(rawBlob, segments);
-          capStatusEl.textContent = '✅ מוכן! (' + segments.length + ' משפטים)';
-          downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
+          capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
+          const editedSegments = await tpShowCaptionReview(segments);
+          if(!editedSegments || editedSegments.length === 0){
+            capStatusEl.textContent = 'הורדת וידאו בלי כתוביות';
+            downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
+          } else {
+            tpTranscriptSegments = editedSegments;
+            document.getElementById('tp-download-srt').style.display = 'inline-block';
+            capStatusEl.textContent = '🔥 צורב כתוביות לתוך הווידאו...';
+            const finalBlob = await tpBurnInCaptions(rawBlob, editedSegments);
+            capStatusEl.textContent = '✅ מוכן! (' + editedSegments.length + ' משפטים)';
+            downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
+          }
         }
       }catch(err){
         console.error('Transcription/burn-in failed:', err);
