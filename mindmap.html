@@ -2582,6 +2582,9 @@ ${excludeLine}
     canvas.height = dims.h;
     const ctx = canvas.getContext('2d');
 
+    // 🔧 אבחון זמני - נסיר את זה ברגע שנפתור את בעיית האוריינטציה
+    tpShowErrorBox('אבחון: rawW=' + rawW + ' rawH=' + rawH + ' תוקן=' + tpRotationDeg + '° | קנבס=' + canvas.width + 'x' + canvas.height);
+
     function drawFrame(){
       if(!tpRecording) return;
       tpDrawRotatedFrame(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg);
