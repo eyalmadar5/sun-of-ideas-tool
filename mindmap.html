@@ -2381,6 +2381,11 @@ Write one viral reel script in English about the specific topic, for a US audien
   // יחד עם צורת ה-buffer הגולמי של המצלמה. זה מתעדכן חי אם מסובבים את הטלפון כשהתצוגה
   // פתוחה. התצוגה הקטנה + כפתורי הסיבוב עדיין נשארים כדי לתקן ידנית אם הניחוש לא מדויק.
   function tpAutoDetectRotation(){
+    const isMobileDevice = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    if(!isMobileDevice){
+      tpRotationDeg = 0; // כבר אושר שבמחשב זה עובד נכון בלי שום סיבוב
+      return;
+    }
     const rawW = tpCameraVideo.videoWidth || 720;
     const rawH = tpCameraVideo.videoHeight || 1280;
     const bufferIsLandscape = rawW > rawH;
@@ -2401,10 +2406,14 @@ Write one viral reel script in English about the specific topic, for a US audien
     if(!tpCameraStream) return;
     tpAutoDetectRotation();
   }
-  if(window.screen && window.screen.orientation){
-    window.screen.orientation.addEventListener('change', tpOnDeviceOrientationChange);
-  } else {
-    window.addEventListener('orientationchange', tpOnDeviceOrientationChange);
+  try{
+    if(window.screen && window.screen.orientation && typeof window.screen.orientation.addEventListener === 'function'){
+      window.screen.orientation.addEventListener('change', tpOnDeviceOrientationChange);
+    } else {
+      window.addEventListener('orientationchange', tpOnDeviceOrientationChange);
+    }
+  }catch(e){
+    console.warn('Could not attach orientation listener (non-fatal):', e);
   }
 
   // מצייר פריים אחד עם הסיבוב הנתון - בשימוש הן בתצוגה הקטנה לאישור והן
