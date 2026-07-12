@@ -4047,7 +4047,31 @@ Build a full, irresistible offer around this product, for a US audience. Return 
 
   async function fetchLandingContent(rootText, teaser, full, productType, intake){
     const typeObj = PRODUCT_TYPES.find(t=>t.key === productType);
-    const system = `אתם קופירייטר/ית מומחה/ית לדפי נחיתה ומכירה (landing pages) בעברית, שמכיר/ה לעומק את עקרונות השכנוע שעובדים היום: מבנה PAS (Problem-Agitate-Solve), הוכחה חברתית, הסרת סיכון, ותהליך קריאה שמוביל טבעי לפעולה אחת.
+    let system, userText;
+    if(isEnglish()){
+      system = `You are an expert copywriter for landing/sales pages in English, deeply familiar with today's persuasion principles: PAS structure (Problem-Agitate-Solve), social proof, risk removal, and a reading flow that naturally leads to one action.
+Write converting landing page content, based on the offer already built. If customer testimonial images were attached - read the text from them (paraphrased, in your own words) and combine them into the testimonials array along with any written testimonials provided.
+Reply ONLY with a JSON object: {"headline":"...", "subheadline":"...", "painPoints":["...","...","..."], "solutionIntro":"...", "testimonials":["...","..."], "faq":[{"q":"...","a":"..."}], "finalCtaHeadline":"...", "finalCtaSubtext":"..."}
+- headline: a strong main headline speaking directly to the audience's desired outcome (up to 12 words)
+- subheadline: a clarifying sentence that reinforces the promise (up to 20 words)
+- painPoints: 3 concrete pains/frustrations the audience feels today, phrased from their perspective (first person)
+- solutionIntro: a short paragraph presenting the product as the natural solution to these pains
+- testimonials: 2-4 short testimonials (written + extracted from images if any), first person, each up to 3 sentences
+- faq: 3-4 common questions with short answers that remove common purchase objections
+- finalCtaHeadline: a decisive closing headline for the final call to action
+- finalCtaSubtext: a short supporting sentence beneath it`;
+      const linksLine = intake.assetLinks ? `\nLinks to the founder's existing digital assets: ${intake.assetLinks}` : '';
+      const testimonialsLine = intake.testimonialsText ? `\nWritten testimonials provided: ${intake.testimonialsText}` : '';
+      const typeLine = typeObj ? `\nProduct type: ${typeObj.labelEn} (${typeObj.descEn})` : '';
+      userText = `Business core topic: ${rootText}
+Product name: ${teaser.name}
+Product description: ${teaser.description}${typeLine}
+Offer components: ${full.valueStack.map(v=>v.item).join(', ')}
+Guarantee: ${full.guarantee}
+Final price: ${full.finalPriceDisplay}${linksLine}${testimonialsLine}
+Write full landing page content in English, for a US audience, following all the guidelines in the system prompt. If testimonial images were attached - read text from them and incorporate it. Return ONLY a JSON object.`;
+    } else {
+      system = `אתם קופירייטר/ית מומחה/ית לדפי נחיתה ומכירה (landing pages) בעברית, שמכיר/ה לעומק את עקרונות השכנוע שעובדים היום: מבנה PAS (Problem-Agitate-Solve), הוכחה חברתית, הסרת סיכון, ותהליך קריאה שמוביל טבעי לפעולה אחת.
 כתבו תוכן לדף נחיתה שממיר, בהתבסס על ההצעה שכבר נבנתה. אם צורפו תמונות עם עדויות לקוחות - קראו מהן את הטקסט (בפרפרזה, במילים שלכם) ושלבו אותן במערך testimonials יחד עם העדויות הכתובות שסופקו.
 השיבו אך ורק JSON object: {"headline":"...", "subheadline":"...", "painPoints":["...","...","..."], "solutionIntro":"...", "testimonials":["...","..."], "faq":[{"q":"...","a":"..."}], "finalCtaHeadline":"...", "finalCtaSubtext":"..."}
 - headline: כותרת ראשית חזקה שמדברת ישירות לתוצאה הרצויה של הקהל (עד 12 מילים)
@@ -4058,16 +4082,17 @@ Build a full, irresistible offer around this product, for a US audience. Return 
 - faq: 3-4 שאלות נפוצות עם תשובות קצרות שמסירות התנגדויות רכישה נפוצות
 - finalCtaHeadline: כותרת סגירה נחרצת לקריאה לפעולה האחרונה
 - finalCtaSubtext: משפט תמיכה קצר מתחתיה`;
-    const linksLine = intake.assetLinks ? `\nקישורים לנכסים דיגיטליים קיימים של היזם/ית: ${intake.assetLinks}` : '';
-    const testimonialsLine = intake.testimonialsText ? `\nעדויות כתובות שסופקו: ${intake.testimonialsText}` : '';
-    const typeLine = typeObj ? `\nסוג המוצר: ${typeObj.label} (${typeObj.desc})` : '';
-    const userText = `נושא הליבה של העסק: ${rootText}
+      const linksLine = intake.assetLinks ? `\nקישורים לנכסים דיגיטליים קיימים של היזם/ית: ${intake.assetLinks}` : '';
+      const testimonialsLine = intake.testimonialsText ? `\nעדויות כתובות שסופקו: ${intake.testimonialsText}` : '';
+      const typeLine = typeObj ? `\nסוג המוצר: ${typeObj.label} (${typeObj.desc})` : '';
+      userText = `נושא הליבה של העסק: ${rootText}
 שם המוצר: ${teaser.name}
 תיאור המוצר: ${teaser.description}${typeLine}
 מרכיבי ההצעה: ${full.valueStack.map(v=>v.item).join(', ')}
 הבטחה/ערבות: ${full.guarantee}
 מחיר סופי: ${full.finalPriceDisplay}${linksLine}${testimonialsLine}
 כתבו תוכן מלא לדף נחיתה לפי כל ההנחיות במערכת. אם צורפו תמונות עדויות - קראו מהן טקסט ושלבו. החזירו אך ורק JSON object.`;
+    }
 
     let userContent = userText;
     if(intake.testimonialImages && intake.testimonialImages.length){
@@ -4091,7 +4116,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     }
     const second = await callClaude(system, userContent, false);
     const parsed2 = parseLandingContentJSON(second.text);
-    if(!parsed2) throw new Error('לא הצלחתי לפרש את תוכן הדף');
+    if(!parsed2) throw new Error(isEnglish() ? 'Could not parse the page content' : 'לא הצלחתי לפרש את תוכן הדף');
     return parsed2;
   }
 
