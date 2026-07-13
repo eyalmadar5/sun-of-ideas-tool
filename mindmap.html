@@ -1089,7 +1089,7 @@
 
   function newTabState(){
     return {
-      id: null, title: 'מפה חדשה',
+      id: null, title: (isEnglish() ? 'New map' : 'מפה חדשה'),
       rootId: null, nodes: {}, paletteCursor: 0,
       scale: 0.85, panX: 0, panY: 0, nextId: 1,
       bio: null,
@@ -1351,14 +1351,14 @@
       if(node.searched){
         const badge = document.createElement('span');
         badge.className = 'search-badge';
-        badge.textContent = '🔎 נבדק';
+        badge.textContent = isEnglish() ? '🔎 Checked' : '🔎 נבדק';
         el.appendChild(badge);
       }
       if(!isRootNode){
         const del = document.createElement('span');
         del.className = 'del-btn';
         del.textContent = '✕';
-        del.title = 'הסר ענף';
+        del.title = isEnglish() ? 'Remove branch' : 'הסר ענף';
         del.addEventListener('click', (e)=>{ e.stopPropagation(); deleteNode(node.id); });
         el.appendChild(del);
       }
@@ -1383,7 +1383,7 @@
         const dot = document.createElement('span');
         dot.className = 'dot';
         btn.appendChild(dot);
-        btn.appendChild(document.createTextNode(' חושב ובודק אונליין…'));
+        btn.appendChild(document.createTextNode(isEnglish() ? ' Thinking and checking online…' : ' חושב ובודק אונליין…'));
       }
       btn.addEventListener('click', ()=> generateChildren(node.id));
       actionsRow.appendChild(btn);
@@ -1402,7 +1402,7 @@
         const bioBtn = document.createElement('button');
         bioBtn.type = 'button';
         bioBtn.className = 'script-btn bio-btn' + (bioReady ? ' ready' : '');
-        bioBtn.title = 'כתוב לי ביו ממיר';
+        bioBtn.title = isEnglish() ? 'Write me a converting bio' : 'כתוב לי ביו ממיר';
         bioBtn.textContent = bioReady ? (isEnglish() ? '✍️ Bio ready' : '✍️ ביו מוכן') : t('bio_btn');
         bioBtn.addEventListener('click', ()=> openBioPanel());
         actionsRow.appendChild(bioBtn);
@@ -1413,7 +1413,7 @@
           const productBtn = document.createElement('button');
           productBtn.type = 'button';
           productBtn.className = 'script-btn product-btn' + (productReady ? ' ready' : '');
-          productBtn.title = 'רעיון למוצר רווחי';
+          productBtn.title = isEnglish() ? 'Profitable product idea' : 'רעיון למוצר רווחי';
           productBtn.textContent = productReady ? (isEnglish() ? '💡 Idea ready' : '💡 רעיון מוכן') : t('product_idea_btn');
           productBtn.addEventListener('click', ()=> openProductPopup());
           actionsRow.appendChild(productBtn);
@@ -1558,7 +1558,7 @@
       const bioBtn = document.createElement('button');
       bioBtn.type = 'button';
       bioBtn.className = 'list-script-btn list-bio-btn' + (bioReady ? ' ready' : '');
-      bioBtn.title = 'כתוב לי ביו ממיר';
+      bioBtn.title = isEnglish() ? 'Write me a converting bio' : 'כתוב לי ביו ממיר';
       bioBtn.textContent = bioReady ? (isEnglish() ? '✍️ Bio ready' : '✍️ ביו מוכן') : t('bio_btn');
       bioBtn.addEventListener('click', ()=> openBioPanel());
       row.appendChild(bioBtn);
@@ -1569,7 +1569,7 @@
         const productBtn = document.createElement('button');
         productBtn.type = 'button';
         productBtn.className = 'list-script-btn list-product-btn' + (productReady ? ' ready' : '');
-        productBtn.title = 'רעיון למוצר רווחי';
+        productBtn.title = isEnglish() ? 'Profitable product idea' : 'רעיון למוצר רווחי';
         productBtn.textContent = productReady ? (isEnglish() ? '💡 Idea ready' : '💡 רעיון מוכן') : t('product_idea_btn');
         productBtn.addEventListener('click', ()=> openProductPopup());
         row.appendChild(productBtn);
@@ -1632,13 +1632,13 @@
       pill.className = 'tab-pill' + (id === workspace.activeId ? ' active' : '');
       const label = document.createElement('span');
       label.className = 'tab-label';
-      const title = t.title || 'מפה חדשה';
+      const title = t.title || (isEnglish() ? 'New map' : 'מפה חדשה');
       label.textContent = title.length > 22 ? title.slice(0,22) + '…' : title;
       pill.appendChild(label);
 
       const closeX = document.createElement('span');
       closeX.className = 'tab-close';
-      closeX.textContent = closeArmed.has(id) ? 'למחוק?' : '✕';
+      closeX.textContent = closeArmed.has(id) ? (isEnglish() ? 'Delete?' : 'למחוק?') : '✕';
       closeX.addEventListener('click', (e)=>{
         e.stopPropagation();
         if(closeArmed.has(id)){
@@ -1798,7 +1798,7 @@
     }catch(err){
       console.error('generateChildren failed:', err);
       node.error = true;
-      showError('לא הצלחתי לייצר רעיונות כרגע (' + (err && err.message ? err.message : 'שגיאה') + '). לחצו שוב על הכפתור לניסיון חוזר.');
+      showError((isEnglish() ? 'Could not generate ideas right now (' : 'לא הצלחתי לייצר רעיונות כרגע (') + (err && err.message ? err.message : (isEnglish()?'error':'שגיאה')) + (isEnglish() ? '). Click the button again to retry.' : '). לחצו שוב על הכפתור לניסיון חוזר.'));
     } finally {
       node.loading = false;
       refreshViews();
@@ -1827,7 +1827,7 @@
     if(!response.ok){
       let detail = '';
       try{ const errJson = await response.json(); detail = errJson && errJson.error && errJson.error.message ? errJson.error.message : ''; }catch(e){}
-      throw new Error('שגיאת שרת ' + response.status + (detail ? (': ' + detail) : ''));
+      throw new Error((isEnglish() ? 'Server error ' : 'שגיאת שרת ') + response.status + (detail ? (': ' + detail) : ''));
     }
     const data = await response.json();
     let usedSearch = false;
@@ -2084,7 +2084,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       node.reelScript = Object.assign({ status: 'ready' }, result);
     }catch(err){
       console.error('generateScript failed:', err);
-      node.reelScript = { status: 'error', message: err && err.message ? err.message : 'שגיאה' };
+      node.reelScript = { status: 'error', message: err && err.message ? err.message : (isEnglish()?'error':'שגיאה') };
     } finally {
       renderScriptPanel();
       refreshViews();
@@ -2146,7 +2146,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       document.getElementById('script-revise-box').style.display = 'none';
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
-      loadingEl.textContent = '✍️ כותב תסריט ובודק מה עובד היום ברילים…';
+      loadingEl.textContent = isEnglish() ? '✍️ Writing the script and checking what works in Reels today…' : '✍️ כותב תסריט ובודק מה עובד היום ברילים…';
       scriptBodyEl.appendChild(loadingEl);
       return;
     }
@@ -2158,7 +2158,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       document.getElementById('script-revise-box').style.display = 'none';
       const errEl = document.createElement('div');
       errEl.className = 'script-error';
-      errEl.textContent = '⚠ לא הצלחתי לכתוב תסריט כרגע (' + (rs.message || 'שגיאה') + '). לחצו על "תסריט אחר" לניסיון חוזר.';
+      errEl.textContent = (isEnglish() ? '⚠ Could not write a script right now (' : '⚠ לא הצלחתי לכתוב תסריט כרגע (') + (rs.message || (isEnglish()?'error':'שגיאה')) + (isEnglish() ? '). Click "Another script" to retry.' : '). לחצו על "תסריט אחר" לניסיון חוזר.');
       scriptBodyEl.appendChild(errEl);
       return;
     }
@@ -2171,7 +2171,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       if(styleObj){
         const badge = document.createElement('div');
         badge.className = 'script-style-badge';
-        badge.textContent = 'סגנון: ' + styleObj.label;
+        badge.textContent = (isEnglish() ? 'Style: ' : 'סגנון: ') + (isEnglish() ? (styleObj.labelEn || styleObj.label) : styleObj.label);
         scriptBodyEl.appendChild(badge);
       }
     }
@@ -2183,15 +2183,15 @@ Write one viral reel script in English about the specific topic, for a US audien
       wrap.appendChild(h); wrap.appendChild(p);
       return wrap;
     }
-    scriptBodyEl.appendChild(section('🪝 הוק — 2-3 השניות הראשונות', rs.hook, 'script-hook'));
-    scriptBodyEl.appendChild(section('🎬 גוף התסריט', rs.body, 'script-body-section'));
+    scriptBodyEl.appendChild(section(isEnglish() ? '🪝 Hook — first 2-3 seconds' : '🪝 הוק — 2-3 השניות הראשונות', rs.hook, 'script-hook'));
+    scriptBodyEl.appendChild(section(isEnglish() ? '🎬 Script body' : '🎬 גוף התסריט', rs.body, 'script-body-section'));
     if(rs.cta){
-      scriptBodyEl.appendChild(section('📣 קריאה לפעולה', rs.cta, 'script-cta'));
+      scriptBodyEl.appendChild(section(isEnglish() ? '📣 Call to action' : '📣 קריאה לפעולה', rs.cta, 'script-cta'));
     }
     if(rs.shots && rs.shots.length){
       const wrap = document.createElement('div');
       wrap.className = 'script-section script-shots';
-      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '🎥 הנחיות צילום';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = isEnglish() ? '🎥 Filming directions' : '🎥 הנחיות צילום';
       wrap.appendChild(h);
       const ul = document.createElement('ul');
       rs.shots.forEach(s=>{ const li = document.createElement('li'); li.textContent = s; ul.appendChild(li); });
@@ -2199,12 +2199,12 @@ Write one viral reel script in English about the specific topic, for a US audien
       scriptBodyEl.appendChild(wrap);
     }
     if(rs.caption){
-      scriptBodyEl.appendChild(section('✍️ כיתוב לפוסט', rs.caption, 'script-caption'));
+      scriptBodyEl.appendChild(section(isEnglish() ? '✍️ Post caption' : '✍️ כיתוב לפוסט', rs.caption, 'script-caption'));
     }
     if(rs.hashtags && rs.hashtags.length){
       const wrap = document.createElement('div');
       wrap.className = 'script-section script-hashtags';
-      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '#️⃣ האשטגים מומלצים';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = isEnglish() ? '#️⃣ Recommended hashtags' : '#️⃣ האשטגים מומלצים';
       wrap.appendChild(h);
       const tagsDiv = document.createElement('div');
       tagsDiv.className = 'script-tags';
@@ -2220,7 +2220,7 @@ Write one viral reel script in English about the specific topic, for a US audien
     if(rs.referenceVideo && rs.referenceVideo.url){
       const wrap = document.createElement('div');
       wrap.className = 'script-section script-reference';
-      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = '🔗 השראה: סרטון ויראלי רלוונטי';
+      const h = document.createElement('div'); h.className = 'script-section-label'; h.textContent = isEnglish() ? '🔗 Inspiration: relevant viral video' : '🔗 השראה: סרטון ויראלי רלוונטי';
       wrap.appendChild(h);
       const card = document.createElement('a');
       card.className = 'script-reference-card';
@@ -2229,7 +2229,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       card.rel = 'noopener noreferrer';
       const platformSpan = document.createElement('span');
       platformSpan.className = 'script-reference-platform';
-      platformSpan.textContent = rs.referenceVideo.platform || 'צפייה בסרטון';
+      platformSpan.textContent = rs.referenceVideo.platform || (isEnglish() ? 'Watch video' : 'צפייה בסרטון');
       card.appendChild(platformSpan);
       if(rs.referenceVideo.engagementNote){
         const noteSpan = document.createElement('span');
@@ -2243,21 +2243,21 @@ Write one viral reel script in English about the specific topic, for a US audien
     if(rs.usedSearch){
       const note = document.createElement('div');
       note.className = 'script-search-note';
-      note.textContent = '🔎 נבדק מול מגמות עדכניות ברילים לפני הכתיבה';
+      note.textContent = isEnglish() ? '🔎 Checked against current Reel trends before writing' : '🔎 נבדק מול מגמות עדכניות ברילים לפני הכתיבה';
       scriptBodyEl.appendChild(note);
     }
   }
 
   function scriptToPlainText(rs, topicText){
     let out = topicText + '\n\n';
-    out += 'הוק:\n' + (rs.hook || '') + '\n\n';
-    out += 'גוף התסריט:\n' + (rs.body || '') + '\n\n';
-    if(rs.cta) out += 'קריאה לפעולה:\n' + rs.cta + '\n\n';
-    if(rs.shots && rs.shots.length) out += 'הנחיות צילום:\n' + rs.shots.map(s=>'- '+s).join('\n') + '\n\n';
-    if(rs.caption) out += 'כיתוב לפוסט:\n' + rs.caption + '\n\n';
-    if(rs.hashtags && rs.hashtags.length) out += 'האשטגים:\n' + rs.hashtags.map(t=> t.startsWith('#')?t:('#'+t)).join(' ') + '\n';
+    out += (isEnglish() ? 'Hook:\n' : 'הוק:\n') + (rs.hook || '') + '\n\n';
+    out += (isEnglish() ? 'Script body:\n' : 'גוף התסריט:\n') + (rs.body || '') + '\n\n';
+    if(rs.cta) out += (isEnglish() ? 'Call to action:\n' : 'קריאה לפעולה:\n') + rs.cta + '\n\n';
+    if(rs.shots && rs.shots.length) out += (isEnglish() ? 'Filming directions:\n' : 'הנחיות צילום:\n') + rs.shots.map(s=>'- '+s).join('\n') + '\n\n';
+    if(rs.caption) out += (isEnglish() ? 'Post caption:\n' : 'כיתוב לפוסט:\n') + rs.caption + '\n\n';
+    if(rs.hashtags && rs.hashtags.length) out += (isEnglish() ? 'Hashtags:\n' : 'האשטגים:\n') + rs.hashtags.map(t=> t.startsWith('#')?t:('#'+t)).join(' ') + '\n';
     if(rs.referenceVideo && rs.referenceVideo.url){
-      out += '\nהשראה - סרטון ויראלי רלוונטי:\n' + rs.referenceVideo.url;
+      out += (isEnglish() ? '\nInspiration - relevant viral video:\n' : '\nהשראה - סרטון ויראלי רלוונטי:\n') + rs.referenceVideo.url;
       if(rs.referenceVideo.engagementNote) out += ' (' + rs.referenceVideo.engagementNote + ')';
       out += '\n';
     }
@@ -2286,7 +2286,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       }catch(e){ /* still failed */ }
     }
     const original = btnEl.textContent;
-    btnEl.textContent = copied ? '✓ הועתק!' : 'לא ניתן להעתיק אוטומטית — סמנו ידנית';
+    btnEl.textContent = copied ? (isEnglish() ? '✓ Copied!' : '✓ הועתק!') : (isEnglish() ? 'Could not copy automatically — select manually' : 'לא ניתן להעתיק אוטומטית — סמנו ידנית');
     setTimeout(()=>{ btnEl.textContent = original; }, 2200);
   }
 
@@ -2350,12 +2350,12 @@ Write one viral reel script in English about the specific topic, for a US audien
 
   function tpStart(){
     tpPlaying = true;
-    tpPlayPause.textContent = '⏸️ עצירה';
+    tpPlayPause.textContent = isEnglish() ? '⏸️ Pause' : '⏸️ עצירה';
     tpTick();
   }
   function tpStop(){
     tpPlaying = false;
-    tpPlayPause.textContent = '▶️ המשך';
+    tpPlayPause.textContent = isEnglish() ? '▶️ Continue' : '▶️ המשך';
     if(tpRafId) cancelAnimationFrame(tpRafId);
   }
   function tpTick(){
@@ -2546,7 +2546,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       });
       tpCameraVideo.srcObject = tpCameraStream;
       tpCameraVideo.style.display = 'block';
-      tpCameraToggle.textContent = '🎥 כיבוי מצלמה';
+      tpCameraToggle.textContent = isEnglish() ? '🎥 Turn off camera' : '🎥 כיבוי מצלמה';
       tpCameraToggle.classList.add('active');
       tpRecordToggle.style.display = 'inline-block';
       tpRotateWrap.style.display = 'flex';
@@ -2559,7 +2559,7 @@ Write one viral reel script in English about the specific topic, for a US audien
       tpPreviewTick();
     }catch(err){
       console.error('Camera access failed:', err);
-      showError('לא הצלחתי לקבל גישה למצלמה (' + (err && err.message ? err.message : 'שגיאה') + '). ודאו שאישרתם הרשאת מצלמה לדפדפן.');
+      showError((isEnglish() ? 'Could not access the camera (' : 'לא הצלחתי לקבל גישה למצלמה (') + (err && err.message ? err.message : (isEnglish()?'error':'שגיאה')) + (isEnglish() ? '). Make sure you granted camera permission to the browser.' : '). ודאו שאישרתם הרשאת מצלמה לדפדפן.'));
     }
   }
   function tpStopCamera(){
@@ -2570,7 +2570,7 @@ Write one viral reel script in English about the specific topic, for a US audien
     }
     tpCameraVideo.srcObject = null;
     tpCameraVideo.style.display = 'none';
-    tpCameraToggle.textContent = '🎥 הפעלת מצלמה';
+    tpCameraToggle.textContent = isEnglish() ? '🎥 Turn on camera' : '🎥 הפעלת מצלמה';
     tpCameraToggle.classList.remove('active');
     tpRecordToggle.style.display = 'none';
     tpRotateWrap.style.display = 'none';
@@ -2710,7 +2710,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     if(!tpLastRawBlob || tpTranscriptSegments.length === 0) return;
     const capStatusEl = document.getElementById('tp-caption-status');
     capStatusEl.style.display = 'inline';
-    capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
+    capStatusEl.textContent = isEnglish() ? '📝 Review and fix the captions...' : '📝 בדקו ותקנו את הכתוביות...';
     const editedSegments = await tpShowCaptionReview(tpTranscriptSegments);
     if(!editedSegments || editedSegments.length === 0){
       capStatusEl.style.display = 'none';
@@ -2718,13 +2718,13 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     }
     try{
       tpTranscriptSegments = editedSegments;
-      capStatusEl.textContent = '🔥 צורב כתוביות מעודכנות לתוך הווידאו...';
+      capStatusEl.textContent = isEnglish() ? '🔥 Burning updated captions into the video...' : '🔥 צורב כתוביות מעודכנות לתוך הווידאו...';
       const finalBlob = await tpBurnInCaptions(tpLastRawBlob, editedSegments);
-      capStatusEl.textContent = '✅ מוכן! גרסה מעודכנת ירדה';
+      capStatusEl.textContent = isEnglish() ? '✅ Done! Updated version downloaded' : '✅ מוכן! גרסה מעודכנת ירדה';
       downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
     }catch(err){
       console.error('Re-burn failed:', err);
-      tpShowErrorBox((err && err.message) ? err.message : 'שגיאה בצריבה מחדש');
+      tpShowErrorBox((err && err.message) ? err.message : (isEnglish() ? 'Error re-burning captions' : 'שגיאה בצריבה מחדש'));
       capStatusEl.style.display = 'none';
     }
   });
@@ -2758,7 +2758,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
 
     await new Promise((resolve, reject)=>{
       sourceVideo.onloadedmetadata = resolve;
-      sourceVideo.onerror = ()=> reject(new Error('טעינת הווידאו לעיבוד נכשלה'));
+      sourceVideo.onerror = ()=> reject(new Error(isEnglish() ? 'Loading the video for processing failed' : 'טעינת הווידאו לעיבוד נכשלה'));
     });
 
     const canvas = document.createElement('canvas');
@@ -2864,15 +2864,15 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
       //     בתוך iframe, שלא תמיד עובד בכלל. אז צורבים אותן לתוך קובץ
       //     אחד סופי, מוכן לפרסום. ---
       capStatusEl.style.display = 'inline';
-      capStatusEl.textContent = '💬 מתמלל את ההקלטה...';
+      capStatusEl.textContent = isEnglish() ? '💬 Transcribing the recording...' : '💬 מתמלל את ההקלטה...';
       try{
         const form = new FormData();
         form.append('file', rawBlob, 'audio.webm');
         form.append('language', isEnglish() ? 'en' : 'he');
         const res = await fetch(WHISPER_ENDPOINT, { method: 'POST', body: form });
         if(!res.ok){
-          const bodyText = await res.text().catch(()=>'(אין פרטים נוספים)');
-          throw new Error('סטטוס ' + res.status + ' — ' + bodyText);
+          const bodyText = await res.text().catch(()=>(isEnglish() ? '(no further details)' : '(אין פרטים נוספים)'));
+          throw new Error((isEnglish() ? 'Status ' : 'סטטוס ') + res.status + ' — ' + bodyText);
         }
         const data = await res.json();
         const segments = (data.segments || []).map(seg => ({
@@ -2882,10 +2882,10 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
         })).filter(seg => seg.text);
 
         if(segments.length === 0){
-          capStatusEl.textContent = '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
+          capStatusEl.textContent = isEnglish() ? '⚠️ No speech detected - downloading video without captions' : '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
           downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
         } else {
-          capStatusEl.textContent = '🤖 משווה מול התסריט ומתקן...';
+          capStatusEl.textContent = isEnglish() ? '🤖 Comparing against the script and fixing...' : '🤖 משווה מול התסריט ומתקן...';
           let correctedSegments = segments;
           const scriptNode = scriptPanelNodeId ? state.nodes[scriptPanelNodeId] : null;
           const rs = scriptNode ? scriptNode.reelScript : null;
@@ -2893,25 +2893,25 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
             tpLastScriptText = [rs.hook, rs.body, rs.cta].filter(Boolean).join('\n');
             correctedSegments = await tpAutoCorrectSegments(segments, tpLastScriptText);
           }
-          capStatusEl.textContent = '📝 בדקו ותקנו את הכתוביות...';
+          capStatusEl.textContent = isEnglish() ? '📝 Review and fix the captions...' : '📝 בדקו ותקנו את הכתוביות...';
           const editedSegments = await tpShowCaptionReview(correctedSegments);
           if(!editedSegments || editedSegments.length === 0){
-            capStatusEl.textContent = 'הורדת וידאו בלי כתוביות';
+            capStatusEl.textContent = isEnglish() ? 'Downloading video without captions' : 'הורדת וידאו בלי כתוביות';
             downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
           } else {
             tpTranscriptSegments = editedSegments;
             document.getElementById('tp-download-srt').style.display = 'inline-block';
             document.getElementById('tp-reedit-captions').style.display = 'inline-block';
-            capStatusEl.textContent = '🔥 צורב כתוביות לתוך הווידאו...';
+            capStatusEl.textContent = isEnglish() ? '🔥 Burning captions into the video...' : '🔥 צורב כתוביות לתוך הווידאו...';
             const finalBlob = await tpBurnInCaptions(rawBlob, editedSegments);
-            capStatusEl.textContent = '✅ מוכן! (' + editedSegments.length + ' משפטים)';
+            capStatusEl.textContent = (isEnglish() ? '✅ Done! (' : '✅ מוכן! (') + editedSegments.length + (isEnglish() ? ' sentences)' : ' משפטים)');
             downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
           }
         }
       }catch(err){
         console.error('Transcription/burn-in failed:', err);
-        const fullMsg = (err && err.message) ? err.message : 'שגיאה לא ידועה';
-        capStatusEl.textContent = '⚠️ כתוביות נכשלו - יורד הווידאו הנקי';
+        const fullMsg = (err && err.message) ? err.message : (isEnglish() ? 'Unknown error' : 'שגיאה לא ידועה');
+        capStatusEl.textContent = isEnglish() ? '⚠️ Captions failed - downloading the clean video' : '⚠️ כתוביות נכשלו - יורד הווידאו הנקי';
         tpShowErrorBox(fullMsg);
         downloadBlob(rawBlob, 'reel-' + Date.now() + '.webm');
       }
@@ -2924,7 +2924,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
       tpRecordTimer.textContent = '⏺ ' + tpFormatTime((Date.now()-tpRecordStartTime)/1000);
     }, 500);
 
-    tpRecordToggle.textContent = '⏹️ עצירת הקלטה';
+    tpRecordToggle.textContent = isEnglish() ? '⏹️ Stop recording' : '⏹️ עצירת הקלטה';
     tpRecordToggle.classList.add('recording');
     tpStart(); // גם מתחילים לגלול אוטומטית עם תחילת ההקלטה
   }
@@ -2947,7 +2947,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     clearInterval(tpRecordTimerInterval);
     tpRecordTimer.style.display = 'none';
     document.getElementById('tp-caption-status').style.display = 'none';
-    tpRecordToggle.textContent = '⏺️ הקלטה';
+    tpRecordToggle.textContent = isEnglish() ? '⏺️ Record' : '⏺️ הקלטה';
     tpRecordToggle.classList.remove('recording');
   }
   tpRecordToggle.addEventListener('click', ()=>{
@@ -3016,12 +3016,18 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
 
   // ---------- Converting bio wizard ----------
   const BIO_FIELDS = [
-    { key:'name', label:'שם / כינוי מקצועי', hint:'איך תרצו שיקראו לכם בביו', placeholder:'לדוגמה: אור כהן' },
-    { key:'niche', label:'תחום העיסוק', hint:'עד 3 תגיות מופרדות ב-|', placeholder:'לדוגמה: פיננסים | התנהלות כלכלית | השקעות' },
-    { key:'credibility', label:'למה שיאמינו לכם', hint:'ניסיון, כמות לקוחות, הישג מדיד', placeholder:'לדוגמה: בגיל 25 יש לי דירה להשקעה ותיק השקעות של 6 ספרות' },
-    { key:'audience', label:'למי אתם עוזרים ובמה', hint:'קהל היעד והבעיה שאתם פותרים', placeholder:'לדוגמה: עוזר לזוגות וצעירים לייצר ביטחון כלכלי' },
-    { key:'promise', label:'ההבטחה המרכזית', hint:'התוצאה + תנאי או מסגרת זמן קונקרטית', placeholder:'לדוגמה: בלי קשר לגובה המשכורת, תוך 120 יום' },
-    { key:'cta', label:'קריאה לפעולה רצויה', hint:'איך רוצים שיפנו אליכם', placeholder:'לדוגמה: מתחילים פה / שלחו הודעה / לינק בביו' }
+    { key:'name', label:'שם / כינוי מקצועי', hint:'איך תרצו שיקראו לכם בביו', placeholder:'לדוגמה: אור כהן',
+      labelEn:'Name / professional handle', hintEn:'What you want to be called in the bio', placeholderEn:'e.g.: Alex Morgan' },
+    { key:'niche', label:'תחום העיסוק', hint:'עד 3 תגיות מופרדות ב-|', placeholder:'לדוגמה: פיננסים | התנהלות כלכלית | השקעות',
+      labelEn:'Area of expertise', hintEn:'Up to 3 tags separated by |', placeholderEn:'e.g.: Finance | Money management | Investing' },
+    { key:'credibility', label:'למה שיאמינו לכם', hint:'ניסיון, כמות לקוחות, הישג מדיד', placeholder:'לדוגמה: בגיל 25 יש לי דירה להשקעה ותיק השקעות של 6 ספרות',
+      labelEn:'Why people should trust you', hintEn:'Experience, client count, a measurable achievement', placeholderEn:'e.g.: By age 25 I owned an investment property and a 6-figure portfolio' },
+    { key:'audience', label:'למי אתם עוזרים ובמה', hint:'קהל היעד והבעיה שאתם פותרים', placeholder:'לדוגמה: עוזר לזוגות וצעירים לייצר ביטחון כלכלי',
+      labelEn:'Who you help and with what', hintEn:'Your target audience and the problem you solve', placeholderEn:'e.g.: Helping young couples build financial security' },
+    { key:'promise', label:'ההבטחה המרכזית', hint:'התוצאה + תנאי או מסגרת זמן קונקרטית', placeholder:'לדוגמה: בלי קשר לגובה המשכורת, תוך 120 יום',
+      labelEn:'The core promise', hintEn:'The outcome + a concrete condition or timeframe', placeholderEn:'e.g.: Regardless of your salary, within 120 days' },
+    { key:'cta', label:'קריאה לפעולה רצויה', hint:'איך רוצים שיפנו אליכם', placeholder:'לדוגמה: מתחילים פה / שלחו הודעה / לינק בביו',
+      labelEn:'Desired call to action', hintEn:'How you want people to reach out', placeholderEn:'e.g.: Start here / Send a message / Link in bio' }
   ];
 
   function ensureBioObject(){
@@ -3054,7 +3060,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     bioBodyEl.innerHTML = '';
     const intro = document.createElement('div');
     intro.className = 'bio-intro';
-    intro.textContent = 'כמה שאלות קצרות, ואבנה לכם ביו ממיר בסגנון שעובד היום באינסטגרם/פייסבוק: כותרת קצרה, שורות אמינות עם אימוג\'ים, והסרת התנגדות עם קריאה לפעולה ברורה.';
+    intro.textContent = isEnglish() ? 'A few short questions, and I\'ll build you a converting bio in the style that works today on Instagram/Facebook: a short tagline, credible lines with emojis, and objection removal with a clear call to action.' : 'כמה שאלות קצרות, ואבנה לכם ביו ממיר בסגנון שעובד היום באינסטגרם/פייסבוק: כותרת קצרה, שורות אמינות עם אימוג\'ים, והסרת התנגדות עם קריאה לפעולה ברורה.';
     bioBodyEl.appendChild(intro);
 
     const answers = state.bio.answers || {};
@@ -3063,15 +3069,15 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
       const wrap = document.createElement('div');
       wrap.className = 'bio-field';
       const label = document.createElement('label');
-      label.textContent = f.label;
+      label.textContent = isEnglish() ? f.labelEn : f.label;
       wrap.appendChild(label);
       const hint = document.createElement('span');
       hint.className = 'bio-hint';
-      hint.textContent = f.hint;
+      hint.textContent = isEnglish() ? f.hintEn : f.hint;
       wrap.appendChild(hint);
       const input = document.createElement('input');
       input.type = 'text';
-      input.placeholder = f.placeholder;
+      input.placeholder = isEnglish() ? f.placeholderEn : f.placeholder;
       input.value = answers[f.key] || '';
       inputs[f.key] = input;
       wrap.appendChild(input);
@@ -3083,7 +3089,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     submitBtn.type = 'button';
     submitBtn.className = 'btn';
     submitBtn.style.flex = '1 1 auto';
-    submitBtn.textContent = '✍️ כתבו לי ביו';
+    submitBtn.textContent = isEnglish() ? '✍️ Write my bio' : '✍️ כתבו לי ביו';
     submitBtn.addEventListener('click', ()=>{
       const collected = {};
       let hasAny = false;
@@ -3105,7 +3111,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     if(rs.status === 'loading'){
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
-      loadingEl.textContent = '✍️ כותב ביו ממיר לפי התשובות שלכם…';
+      loadingEl.textContent = isEnglish() ? '✍️ Writing a converting bio based on your answers…' : '✍️ כותב ביו ממיר לפי התשובות שלכם…';
       bioBodyEl.appendChild(loadingEl);
       bioFooterEl.innerHTML = '';
       return;
@@ -3113,14 +3119,14 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     if(rs.status === 'error'){
       const errEl = document.createElement('div');
       errEl.className = 'script-error';
-      errEl.textContent = '⚠ לא הצלחתי לכתוב ביו כרגע (' + (rs.message || 'שגיאה') + '). אפשר לנסות שוב.';
+      errEl.textContent = (isEnglish() ? '⚠ Could not write a bio right now (' : '⚠ לא הצלחתי לכתוב ביו כרגע (') + (rs.message || (isEnglish()?'error':'שגיאה')) + (isEnglish() ? '). You can try again.' : '). אפשר לנסות שוב.');
       bioBodyEl.appendChild(errEl);
       bioFooterEl.innerHTML = '';
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
       retryBtn.className = 'btn';
       retryBtn.style.flex = '1 1 auto';
-      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.textContent = isEnglish() ? '🔄 Try again' : '🔄 ניסיון חוזר';
       retryBtn.addEventListener('click', ()=> generateBio());
       bioFooterEl.appendChild(retryBtn);
       return;
@@ -3141,7 +3147,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
 
     const editLink = document.createElement('span');
     editLink.className = 'bio-edit-link';
-    editLink.textContent = '✏️ לעדכן את התשובות';
+    editLink.textContent = isEnglish() ? '✏️ Update the answers' : '✏️ לעדכן את התשובות';
     editLink.addEventListener('click', ()=>{
       state.bio.status = 'form';
       renderBioPanel();
@@ -3154,7 +3160,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     regenBtn.type = 'button';
     regenBtn.className = 'btn ghost';
     regenBtn.style.flex = '1 1 auto';
-    regenBtn.textContent = '🔄 ביו אחר';
+    regenBtn.textContent = isEnglish() ? '🔄 Another bio' : '🔄 ביו אחר';
     regenBtn.addEventListener('click', ()=> generateBio());
     bioFooterEl.appendChild(regenBtn);
 
@@ -3323,7 +3329,7 @@ Write one converting bio in English, for a US audience, following all the guidel
     }catch(err){
       console.error('generateBio failed:', err);
       bio.status = 'error';
-      bio.message = err && err.message ? err.message : 'שגיאה';
+      bio.message = err && err.message ? err.message : (isEnglish()?'error':'שגיאה');
     } finally {
       renderBioPanel();
       refreshViews();
@@ -3485,7 +3491,7 @@ Propose one profitable product/service idea based on these topics, for a US audi
     }catch(err){
       console.error('generateProductTeaser failed:', err);
       po.status = 'error';
-      po.message = err && err.message ? err.message : 'שגיאה';
+      po.message = err && err.message ? err.message : (isEnglish()?'error':'שגיאה');
     } finally {
       renderProductPopup();
       refreshViews();
@@ -3580,7 +3586,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     }catch(err){
       console.error('generateFullOffer failed:', err);
       po.status = 'error';
-      po.message = err && err.message ? err.message : 'שגיאה';
+      po.message = err && err.message ? err.message : (isEnglish()?'error':'שגיאה');
     } finally {
       renderProductPopup();
       persist();
@@ -3592,7 +3598,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     box.className = 'calc-box';
     const title = document.createElement('div');
     title.className = 'calc-title';
-    title.textContent = '🧮 כמה צריך למכור כדי להרוויח את זה בחודש?';
+    title.textContent = isEnglish() ? '🧮 How many units to sell to earn this per month?' : '🧮 כמה צריך למכור כדי להרוויח את זה בחודש?';
     box.appendChild(title);
 
     const row = document.createElement('div');
@@ -3601,7 +3607,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const incomeField = document.createElement('div');
     incomeField.className = 'calc-field';
     const incomeLabel = document.createElement('label');
-    incomeLabel.textContent = 'כמה תרצה/י להרוויח בחודש (₪)';
+    incomeLabel.textContent = isEnglish() ? 'How much do you want to earn per month (₪)' : 'כמה תרצה/י להרוויח בחודש (₪)';
     const incomeInput = document.createElement('input');
     incomeInput.type = 'number';
     incomeInput.min = '0';
@@ -3612,7 +3618,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const priceField = document.createElement('div');
     priceField.className = 'calc-field';
     const priceLabel = document.createElement('label');
-    priceLabel.textContent = 'מחיר ליחידה/ללקוח (₪)';
+    priceLabel.textContent = isEnglish() ? 'Price per unit/customer (₪)' : 'מחיר ליחידה/ללקוח (₪)';
     const priceInput = document.createElement('input');
     priceInput.type = 'number';
     priceInput.min = '1';
@@ -3636,12 +3642,14 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       const perDay = (units / 30);
       result.innerHTML = '';
       const line1 = document.createElement('div');
-      line1.innerHTML = `כדי להרוויח <b>₪${income.toLocaleString()}</b> בחודש במחיר של ₪${price.toLocaleString()} ליחידה, צריך למכור <b>${units.toLocaleString()}</b> יחידות בחודש`;
+      line1.innerHTML = isEnglish()
+        ? `To earn <b>\u20aa${income.toLocaleString()}</b> per month at \u20aa${price.toLocaleString()} per unit, you need to sell <b>${units.toLocaleString()} units<\/b> per month.`
+        : `כדי להרוויח <b>₪${income.toLocaleString()}</b> בחודש במחיר של ₪${price.toLocaleString()} ליחידה, צריך למכור <b>${units.toLocaleString()} יחידות בחודש<\/b>.`;
       const line2 = document.createElement('div');
       line2.style.marginTop = '6px';
       line2.style.fontSize = '12.5px';
       line2.style.color = 'var(--ink-soft)';
-      line2.textContent = `בערך ${perWeek.toFixed(1)} בשבוע, או ${perDay.toFixed(2)} ליום`;
+      line2.textContent = isEnglish() ? `About ${perWeek.toFixed(1)} per week, or ${perDay.toFixed(2)} per day` : `בערך ${perWeek.toFixed(1)} בשבוע, או ${perDay.toFixed(2)} ליום`;
       result.appendChild(line1);
       result.appendChild(line2);
     }
@@ -3660,7 +3668,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     if(po.status === 'type-select'){
       const intro = document.createElement('div');
       intro.className = 'bio-intro';
-      intro.textContent = 'קודם כל - איזה סוג מוצר/שירות תרצו לבנות? נתאים את כל הרעיון למודל הזה מההתחלה.';
+      intro.textContent = isEnglish() ? 'First - what type of product/service would you like to build? We\'ll tailor the whole idea to this model from the start.' : 'קודם כל - איזה סוג מוצר/שירות תרצו לבנות? נתאים את כל הרעיון למודל הזה מההתחלה.';
       productBodyEl.appendChild(intro);
 
       const typeRow = document.createElement('div');
@@ -3671,10 +3679,10 @@ Build a full, irresistible offer around this product, for a US audience. Return 
         pill.className = 'product-type-pill';
         const title = document.createElement('span');
         title.className = 'pt-title';
-        title.textContent = t.label;
+        title.textContent = isEnglish() ? t.labelEn : t.label;
         const desc = document.createElement('span');
         desc.className = 'pt-desc';
-        desc.textContent = t.desc;
+        desc.textContent = isEnglish() ? t.descEn : t.desc;
         pill.appendChild(title);
         pill.appendChild(desc);
         pill.addEventListener('click', ()=>{
@@ -3690,21 +3698,21 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     if(po.status === 'idle' || po.status === 'loading'){
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
-      loadingEl.textContent = '💡 חושב על רעיון למוצר רווחי לפי הנושאים שבחרת להעמיק...';
+      loadingEl.textContent = isEnglish() ? '💡 Thinking of a profitable product idea based on the topics you chose to explore...' : '💡 חושב על רעיון למוצר רווחי לפי הנושאים שבחרת להעמיק...';
       productBodyEl.appendChild(loadingEl);
       return;
     }
     if(po.status === 'error'){
       const errEl = document.createElement('div');
       errEl.className = 'script-error';
-      errEl.textContent = '⚠ לא הצלחתי לבנות רעיון כרגע (' + (po.message || 'שגיאה') + ').';
+      errEl.textContent = (isEnglish() ? '⚠ Could not build an idea right now (' : '⚠ לא הצלחתי לבנות רעיון כרגע (') + (po.message || (isEnglish()?'error':'שגיאה')) + ').';
       productBodyEl.appendChild(errEl);
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
       retryBtn.className = 'btn';
       retryBtn.style.marginTop = '14px';
       retryBtn.style.width = '100%';
-      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.textContent = isEnglish() ? '🔄 Try again' : '🔄 ניסיון חוזר';
       retryBtn.addEventListener('click', ()=> po.productType ? generateProductTeaser() : (po.status='type-select', renderProductPopup()));
       productBodyEl.appendChild(retryBtn);
       return;
@@ -3733,7 +3741,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     if(teaser.keyComponents && teaser.keyComponents.length){
       const label = document.createElement('div');
       label.className = 'product-section-label';
-      label.textContent = 'מה כולל המוצר';
+      label.textContent = isEnglish() ? 'What the product includes' : 'מה כולל המוצר';
       productBodyEl.appendChild(label);
       const wrap = document.createElement('div');
       wrap.className = 'product-components';
@@ -3746,7 +3754,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     if(po.status === 'loading-full'){
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
-      loadingEl.textContent = '🚀 בונה הצעה בלתי ניתנת לסירוב...';
+      loadingEl.textContent = isEnglish() ? '🚀 Building an offer no one can refuse...' : '🚀 בונה הצעה בלתי ניתנת לסירוב...';
       productBodyEl.appendChild(loadingEl);
       return;
     }
@@ -3755,7 +3763,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       const full = po.full;
       const label = document.createElement('div');
       label.className = 'product-section-label';
-      label.textContent = '📦 מה שאתם מקבלים (ערך מלא)';
+      label.textContent = isEnglish() ? '📦 What you get (full value)' : '📦 מה שאתם מקבלים (ערך מלא)';
       productBodyEl.appendChild(label);
       full.valueStack.forEach(v=>{
         const item = document.createElement('div');
@@ -3771,7 +3779,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       if(full.totalStackValueDisplay){
         const totalEl = document.createElement('div');
         totalEl.className = 'value-stack-total';
-        const t1 = document.createElement('span'); t1.textContent = 'שווי כולל';
+        const t1 = document.createElement('span'); t1.textContent = isEnglish() ? 'Total value' : 'שווי כולל';
         const t2 = document.createElement('span'); t2.textContent = full.totalStackValueDisplay;
         totalEl.appendChild(t1); totalEl.appendChild(t2);
         productBodyEl.appendChild(totalEl);
@@ -3779,7 +3787,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       if(full.bonuses && full.bonuses.length){
         const bl = document.createElement('div');
         bl.className = 'product-section-label';
-        bl.textContent = '🎁 בונוסים';
+        bl.textContent = isEnglish() ? '🎁 Bonuses' : '🎁 בונוסים';
         productBodyEl.appendChild(bl);
         const wrap = document.createElement('div');
         wrap.className = 'product-components';
@@ -3790,7 +3798,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       }
       const gl = document.createElement('div');
       gl.className = 'product-section-label';
-      gl.textContent = '🛡️ הבטחה';
+      gl.textContent = isEnglish() ? '🛡️ Guarantee' : '🛡️ הבטחה';
       productBodyEl.appendChild(gl);
       const guaranteeEl = document.createElement('div');
       guaranteeEl.className = 'product-guarantee';
@@ -3800,7 +3808,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       if(full.scarcity){
         const sl = document.createElement('div');
         sl.className = 'product-section-label';
-        sl.textContent = '⏳ דחיפות';
+        sl.textContent = isEnglish() ? '⏳ Urgency' : '⏳ דחיפות';
         productBodyEl.appendChild(sl);
         const scarcityEl = document.createElement('div');
         scarcityEl.className = 'product-scarcity';
@@ -3813,7 +3821,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       if(full.totalStackValueDisplay){
         const oldP = document.createElement('span');
         oldP.className = 'pf-old';
-        oldP.textContent = 'שווי כולל: ' + full.totalStackValueDisplay;
+        oldP.textContent = (isEnglish() ? 'Total value: ' : 'שווי כולל: ') + full.totalStackValueDisplay;
         finalWrap.appendChild(oldP);
       }
       const newP = document.createElement('span');
@@ -3833,13 +3841,13 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       const landingBtn = document.createElement('button');
       landingBtn.type = 'button';
       landingBtn.className = 'product-build-btn';
-      landingBtn.textContent = '🖥️ בנה דף נחיתה';
+      landingBtn.textContent = isEnglish() ? '🖥️ Build landing page' : '🖥️ בנה דף נחיתה';
       landingBtn.addEventListener('click', ()=> openLandingModal());
       productBodyEl.appendChild(landingBtn);
 
       const regenFull = document.createElement('span');
       regenFull.className = 'product-regen-link';
-      regenFull.textContent = '🔄 לבנות הצעה אחרת';
+      regenFull.textContent = isEnglish() ? '🔄 Build a different offer' : '🔄 לבנות הצעה אחרת';
       regenFull.addEventListener('click', ()=> generateFullOffer());
       productBodyEl.appendChild(regenFull);
 
@@ -3850,20 +3858,20 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       if(typeObj){
         const typeBadge = document.createElement('div');
         typeBadge.className = 'script-style-badge';
-        typeBadge.textContent = 'סוג: ' + typeObj.label;
+        typeBadge.textContent = (isEnglish() ? 'Type: ' : 'סוג: ') + (isEnglish() ? typeObj.labelEn : typeObj.label);
         productBodyEl.appendChild(typeBadge);
       }
 
       const buildBtn = document.createElement('button');
       buildBtn.type = 'button';
       buildBtn.className = 'product-build-btn';
-      buildBtn.textContent = '🚀 בנה הצעה שאי אפשר לסרב לה';
+      buildBtn.textContent = isEnglish() ? '🚀 Build an offer no one can refuse' : '🚀 בנה הצעה שאי אפשר לסרב לה';
       buildBtn.addEventListener('click', ()=> generateFullOffer());
       productBodyEl.appendChild(buildBtn);
 
       const regenTeaser = document.createElement('span');
       regenTeaser.className = 'product-regen-link';
-      regenTeaser.textContent = '🔄 רעיון אחר למוצר';
+      regenTeaser.textContent = isEnglish() ? '🔄 Another product idea' : '🔄 רעיון אחר למוצר';
       regenTeaser.addEventListener('click', ()=> generateProductTeaser());
       productBodyEl.appendChild(regenTeaser);
 
@@ -3938,7 +3946,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
       retryBtn.className = 'btn';
       retryBtn.style.marginTop = '14px';
       retryBtn.style.width = '100%';
-      retryBtn.textContent = '🔄 ניסיון חוזר';
+      retryBtn.textContent = isEnglish() ? '🔄 Try again' : '🔄 ניסיון חוזר';
       retryBtn.addEventListener('click', ()=> generateLandingPage());
       landingBodyEl.appendChild(retryBtn);
     } else if(lp.status === 'ready'){
