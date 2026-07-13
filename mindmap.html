@@ -3934,12 +3934,12 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     } else if(lp.status === 'loading'){
       const loadingEl = document.createElement('div');
       loadingEl.className = 'script-loading';
-      loadingEl.textContent = '🖥️ בונה דף נחיתה לפי מה שסיפרת, ובודק עקרונות שכנוע שעובדים היום...';
+      loadingEl.textContent = isEnglish() ? '🖥️ Building a landing page based on what you shared, checking persuasion principles that work today...' : '🖥️ בונה דף נחיתה לפי מה שסיפרת, ובודק עקרונות שכנוע שעובדים היום...';
       landingBodyEl.appendChild(loadingEl);
     } else if(lp.status === 'error'){
       const errEl = document.createElement('div');
       errEl.className = 'script-error';
-      errEl.textContent = '⚠ לא הצלחתי לבנות את הדף כרגע (' + (lp.message || 'שגיאה') + ').';
+      errEl.textContent = (isEnglish() ? '⚠ Could not build the page right now (' : '⚠ לא הצלחתי לבנות את הדף כרגע (') + (lp.message || (isEnglish()?'error':'שגיאה')) + ').';
       landingBodyEl.appendChild(errEl);
       const retryBtn = document.createElement('button');
       retryBtn.type = 'button';
@@ -3957,16 +3957,16 @@ Build a full, irresistible offer around this product, for a US audience. Return 
   function renderLandingIntakeForm(lp){
     const intro = document.createElement('div');
     intro.className = 'bio-intro';
-    intro.textContent = 'כמה פרטים לפני שבונים - ככל שתשתפו יותר, הדף יהיה מדויק ומשכנע יותר עבור הקהל שלכם.';
+    intro.textContent = isEnglish() ? 'A few details before we build - the more you share, the more precise and persuasive the page will be for your audience.' : 'כמה פרטים לפני שבונים - ככל שתשתפו יותר, הדף יהיה מדויק ומשכנע יותר עבור הקהל שלכם.';
     landingBodyEl.appendChild(intro);
 
     const linksField = document.createElement('div');
     linksField.className = 'intake-field';
     const linksLabel = document.createElement('label');
-    linksLabel.textContent = 'קישורים לנכסים דיגיטליים קיימים (אופציונלי)';
+    linksLabel.textContent = isEnglish() ? 'Links to existing digital assets (optional)' : 'קישורים לנכסים דיגיטליים קיימים (אופציונלי)';
     const linksHint = document.createElement('span');
     linksHint.className = 'intake-hint';
-    linksHint.textContent = 'אתר, עמוד אינסטגרם, קורס קיים וכו׳ - שורה לכל קישור';
+    linksHint.textContent = isEnglish() ? 'Website, Instagram page, existing course, etc. - one line per link' : 'אתר, עמוד אינסטגרם, קורס קיים וכו׳ - שורה לכל קישור';
     const linksInput = document.createElement('textarea');
     linksInput.value = lp.intake.assetLinks || '';
     linksField.appendChild(linksLabel);
@@ -3977,10 +3977,10 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const photoField = document.createElement('div');
     photoField.className = 'intake-field';
     const photoLabel = document.createElement('label');
-    photoLabel.textContent = 'תמונה אישית (אופציונלי)';
+    photoLabel.textContent = isEnglish() ? 'Personal photo (optional)' : 'תמונה אישית (אופציונלי)';
     const photoHint = document.createElement('span');
     photoHint.className = 'intake-hint';
-    photoHint.textContent = 'תופיע בדף הנחיתה כדי ליצור אמון וחיבור אישי';
+    photoHint.textContent = isEnglish() ? 'Will appear on the landing page to build trust and a personal connection' : 'תופיע בדף הנחיתה כדי ליצור אמון וחיבור אישי';
     photoField.appendChild(photoLabel);
     photoField.appendChild(photoHint);
     const photoRow = document.createElement('div');
@@ -3998,7 +3998,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const photoBtn = document.createElement('button');
     photoBtn.type = 'button';
     photoBtn.className = 'intake-file-btn';
-    photoBtn.textContent = lp.intake.personalPhotoDataUrl ? '🔄 החלפת תמונה' : '📷 העלאת תמונה';
+    photoBtn.textContent = lp.intake.personalPhotoDataUrl ? (isEnglish() ? '🔄 Replace photo' : '🔄 החלפת תמונה') : (isEnglish() ? '📷 Upload photo' : '📷 העלאת תמונה');
     const photoInput = document.createElement('input');
     photoInput.type = 'file';
     photoInput.accept = 'image/*';
@@ -4012,7 +4012,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
           lp.intake.personalPhotoName = photoInput.files[0].name;
           renderLandingModal();
           persist();
-        }catch(e){ showError('לא הצלחתי לטעון את התמונה'); }
+        }catch(e){ showError(isEnglish() ? 'Could not load the image' : 'לא הצלחתי לטעון את התמונה'); }
       }
     });
     photoRow.appendChild(photoBtn);
@@ -4023,10 +4023,10 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const testiTextField = document.createElement('div');
     testiTextField.className = 'intake-field';
     const testiLabel = document.createElement('label');
-    testiLabel.textContent = 'עדויות קיימות (אופציונלי)';
+    testiLabel.textContent = isEnglish() ? 'Existing testimonials (optional)' : 'עדויות קיימות (אופציונלי)';
     const testiHint = document.createElement('span');
     testiHint.className = 'intake-hint';
-    testiHint.textContent = 'הדביקו כאן ציטוטים או תיאורים של לקוחות מרוצים, כל עדות בשורה נפרדת';
+    testiHint.textContent = isEnglish() ? 'Paste quotes or descriptions from happy customers here, one testimonial per line' : 'הדביקו כאן ציטוטים או תיאורים של לקוחות מרוצים, כל עדות בשורה נפרדת';
     const testiInput = document.createElement('textarea');
     testiInput.value = lp.intake.testimonialsText || '';
     testiTextField.appendChild(testiLabel);
@@ -4037,10 +4037,10 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const testiImgField = document.createElement('div');
     testiImgField.className = 'intake-field';
     const testiImgLabel = document.createElement('label');
-    testiImgLabel.textContent = 'צילומי מסך של עדויות (אופציונלי)';
+    testiImgLabel.textContent = isEnglish() ? 'Screenshots of testimonials (optional)' : 'צילומי מסך של עדויות (אופציונלי)';
     const testiImgHint = document.createElement('span');
     testiImgHint.className = 'intake-hint';
-    testiImgHint.textContent = 'אפשר להעלות כמה תמונות - נקרא מהן את הטקסט ונשלב בדף';
+    testiImgHint.textContent = isEnglish() ? 'You can upload several images - we\'ll read the text from them and include it on the page' : 'אפשר להעלות כמה תמונות - נקרא מהן את הטקסט ונשלב בדף';
     testiImgField.appendChild(testiImgLabel);
     testiImgField.appendChild(testiImgHint);
     const testiImgRow = document.createElement('div');
@@ -4055,7 +4055,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const testiImgBtn = document.createElement('button');
     testiImgBtn.type = 'button';
     testiImgBtn.className = 'intake-file-btn';
-    testiImgBtn.textContent = '🖼️ הוספת תמונות עדויות';
+    testiImgBtn.textContent = isEnglish() ? '🖼️ Add testimonial images' : '🖼️ הוספת תמונות עדויות';
     const testiImgInput = document.createElement('input');
     testiImgInput.type = 'file';
     testiImgInput.accept = 'image/*';
@@ -4072,7 +4072,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
           }
           renderLandingModal();
           persist();
-        }catch(e){ showError('לא הצלחתי לטעון את התמונות'); }
+        }catch(e){ showError(isEnglish() ? 'Could not load the images' : 'לא הצלחתי לטעון את התמונות'); }
       }
     });
     testiImgRow.appendChild(testiImgBtn);
@@ -4083,7 +4083,7 @@ Build a full, irresistible offer around this product, for a US audience. Return 
     const submitBtn = document.createElement('button');
     submitBtn.type = 'button';
     submitBtn.className = 'product-build-btn';
-    submitBtn.textContent = '✨ בנה לי דף נחיתה';
+    submitBtn.textContent = isEnglish() ? '✨ Build me a landing page' : '✨ בנה לי דף נחיתה';
     submitBtn.addEventListener('click', ()=>{
       lp.intake.assetLinks = linksInput.value.trim();
       lp.intake.testimonialsText = testiInput.value.trim();
@@ -4196,9 +4196,10 @@ Write full landing page content in English, for a US audience, following all the
   }
 
   function buildLandingHTML(content, intake, teaser, full, productType){
+    const eng = isEnglish();
     const isService = productType === '1on1' || productType === 'group';
     const photoBlock = intake.personalPhotoDataUrl
-      ? `<img src="${intake.personalPhotoDataUrl}" alt="תמונה אישית" class="lp-photo"/>`
+      ? `<img src="${intake.personalPhotoDataUrl}" alt="${eng ? 'Personal photo' : 'תמונה אישית'}" class="lp-photo"/>`
       : '';
     const painItems = content.painPoints.map(p=>`<li>${escapeHTML(p)}</li>`).join('');
     const valueItems = full.valueStack.map(v=>`<div class="lp-value-item"><span>${escapeHTML(v.item)}</span><span class="lp-value-amt">${escapeHTML(v.value)}</span></div>`).join('');
@@ -4208,20 +4209,20 @@ Write full landing page content in English, for a US audience, following all the
 
     const priceOrLeadBlock = isService ? `
       <div class="lp-lead-form">
-        <div class="lp-lead-title">משאירים פרטים ונחזור אליכם עם כל הפרטים</div>
-        <input type="text" placeholder="שם מלא" class="lp-input"/>
-        <input type="tel" placeholder="טלפון" class="lp-input"/>
-        <input type="email" placeholder="אימייל" class="lp-input"/>
-        <button type="button" class="lp-btn-primary">שליחת פרטים</button>
+        <div class="lp-lead-title">${eng ? 'Leave your details and we\'ll get back to you' : 'משאירים פרטים ונחזור אליכם עם כל הפרטים'}</div>
+        <input type="text" placeholder="${eng ? 'Full name' : 'שם מלא'}" class="lp-input"/>
+        <input type="tel" placeholder="${eng ? 'Phone' : 'טלפון'}" class="lp-input"/>
+        <input type="email" placeholder="${eng ? 'Email' : 'אימייל'}" class="lp-input"/>
+        <button type="button" class="lp-btn-primary">${eng ? 'Send details' : 'שליחת פרטים'}</button>
       </div>` : `
       <div class="lp-price-block">
-        ${full.totalStackValueDisplay ? `<div class="lp-price-old">שווי כולל: ${escapeHTML(full.totalStackValueDisplay)}</div>` : ''}
+        ${full.totalStackValueDisplay ? `<div class="lp-price-old">${eng ? 'Total value: ' : 'שווי כולל: '}${escapeHTML(full.totalStackValueDisplay)}</div>` : ''}
         <div class="lp-price-new">${escapeHTML(full.finalPriceDisplay || teaser.priceDisplay)}</div>
-        <button type="button" class="lp-btn-primary">🛒 לרכישה מיידית</button>
+        <button type="button" class="lp-btn-primary">${eng ? '🛒 Buy now' : '🛒 לרכישה מיידית'}</button>
       </div>`;
 
     return `<!DOCTYPE html>
-<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<html lang="${eng ? 'en' : 'he'}" dir="${eng ? 'ltr' : 'rtl'}"><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700&family=Rubik:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;}
@@ -4259,7 +4260,7 @@ Write full landing page content in English, for a US audience, following all the
     <p>${escapeHTML(content.subheadline)}</p>
   </div>
   <section class="lp-pain">
-    <h2>מוכר לכם?</h2>
+    <h2>${eng ? 'Sound familiar?' : 'מוכר לכם?'}</h2>
     <ul>${painItems}</ul>
   </section>
   <section class="lp-solution-section">
@@ -4267,20 +4268,20 @@ Write full landing page content in English, for a US audience, following all the
     <div class="lp-solution">${escapeHTML(content.solutionIntro)}</div>
   </section>
   <section class="lp-value">
-    <h2>מה מקבלים</h2>
+    <h2>${eng ? 'What you get' : 'מה מקבלים'}</h2>
     ${valueItems}
-    ${bonusItems ? `<h2 style="margin-top:28px;">בונוסים</h2><ul class="lp-bonuses">${bonusItems}</ul>` : ''}
+    ${bonusItems ? `<h2 style="margin-top:28px;">${eng ? 'Bonuses' : 'בונוסים'}</h2><ul class="lp-bonuses">${bonusItems}</ul>` : ''}
     <div class="lp-guarantee">🛡️ ${escapeHTML(full.guarantee)}</div>
   </section>
-  ${testimonialItems ? `<section class="lp-testimonials"><h2>מה אומרים עלינו</h2>${testimonialItems}</section>` : ''}
+  ${testimonialItems ? `<section class="lp-testimonials"><h2>${eng ? 'What people are saying' : 'מה אומרים עלינו'}</h2>${testimonialItems}</section>` : ''}
   <section class="lp-cta-section">
     ${priceOrLeadBlock}
   </section>
-  ${faqItems ? `<section class="lp-faq"><h2>שאלות נפוצות</h2>${faqItems}</section>` : ''}
+  ${faqItems ? `<section class="lp-faq"><h2>${eng ? 'FAQ' : 'שאלות נפוצות'}</h2>${faqItems}</section>` : ''}
   <div class="lp-final">
     <h2>${escapeHTML(content.finalCtaHeadline)}</h2>
     <p>${escapeHTML(content.finalCtaSubtext)}</p>
-    ${isService ? '<button type="button" class="lp-btn-primary">משאירים פרטים</button>' : '<button type="button" class="lp-btn-primary">🛒 לרכישה מיידית</button>'}
+    ${isService ? `<button type="button" class="lp-btn-primary">${eng ? 'Leave your details' : 'משאירים פרטים'}</button>` : `<button type="button" class="lp-btn-primary">${eng ? '🛒 Buy now' : '🛒 לרכישה מיידית'}</button>`}
   </div>
 </body></html>`;
   }
@@ -4299,7 +4300,7 @@ Write full landing page content in English, for a US audience, following all the
     }catch(err){
       console.error('generateLandingPage failed:', err);
       lp.status = 'error';
-      lp.message = err && err.message ? err.message : 'שגיאה';
+      lp.message = err && err.message ? err.message : (isEnglish()?'error':'שגיאה');
     } finally {
       renderLandingModal();
       persist();
@@ -4323,7 +4324,7 @@ Write full landing page content in English, for a US audience, following all the
       widget('text-editor', { editor: content.subheadline })
     ], { background_background:'classic', background_color:'#1B2430' }));
     sections.push(section([
-      widget('heading', { title:'מוכר לכם?', align:'center' }),
+      widget('heading', { title: isEnglish() ? 'Sound familiar?' : 'מוכר לכם?', align:'center' }),
       widget('icon-list', { icon_list: content.painPoints.map(p=>({ text:p })) })
     ]));
     sections.push(section([
@@ -4331,38 +4332,38 @@ Write full landing page content in English, for a US audience, following all the
       widget('text-editor', { editor: content.solutionIntro })
     ]));
     sections.push(section([
-      widget('heading', { title:'מה מקבלים', align:'center' }),
+      widget('heading', { title: isEnglish() ? 'What you get' : 'מה מקבלים', align:'center' }),
       widget('icon-list', { icon_list: full.valueStack.map(v=>({ text: v.item + ' - ' + v.value })) }),
       widget('text-editor', { editor: '🛡️ ' + full.guarantee })
     ]));
     if(content.testimonials.length){
       sections.push(section([
-        widget('heading', { title:'מה אומרים עלינו', align:'center' }),
+        widget('heading', { title: isEnglish() ? 'What people are saying' : 'מה אומרים עלינו', align:'center' }),
         widget('text-editor', { editor: content.testimonials.map(t=>'"'+t+'"').join('<br><br>') })
       ]));
     }
     sections.push(section([
       isService
-        ? widget('form', { form_name:'ליד', fields:[{field_label:'שם מלא'},{field_label:'טלפון'},{field_label:'אימייל'}], button_text:'שליחת פרטים' })
-        : widget('button', { text:'🛒 לרכישה מיידית', align:'center' })
+        ? widget('form', { form_name: isEnglish() ? 'Lead' : 'ליד', fields:[{field_label: isEnglish()?'Full name':'שם מלא'},{field_label: isEnglish()?'Phone':'טלפון'},{field_label: isEnglish()?'Email':'אימייל'}], button_text: isEnglish() ? 'Send details' : 'שליחת פרטים' })
+        : widget('button', { text: isEnglish() ? '🛒 Buy now' : '🛒 לרכישה מיידית', align:'center' })
     ], { background_color:'#FBF8F3' }));
     if(content.faq.length){
       sections.push(section([
-        widget('heading', { title:'שאלות נפוצות', align:'center' }),
+        widget('heading', { title: isEnglish() ? 'FAQ' : 'שאלות נפוצות', align:'center' }),
         widget('text-editor', { editor: content.faq.map(f=>'<b>'+f.q+'</b><br>'+f.a).join('<br><br>') })
       ]));
     }
     sections.push(section([
       widget('heading', { title: content.finalCtaHeadline, align:'center' }),
       widget('text-editor', { editor: content.finalCtaSubtext }),
-      isService ? widget('button', { text:'משאירים פרטים', align:'center' }) : widget('button', { text:'🛒 לרכישה מיידית', align:'center' })
+      isService ? widget('button', { text: isEnglish() ? 'Leave your details' : 'משאירים פרטים', align:'center' }) : widget('button', { text: isEnglish() ? '🛒 Buy now' : '🛒 לרכישה מיידית', align:'center' })
     ], { background_color:'#1B2430' }));
 
     return {
       content: sections,
       page_settings: [],
       version: '0.4',
-      title: (teaser.name || 'דף נחיתה') + ' - דף נחיתה',
+      title: (teaser.name || (isEnglish() ? 'Landing page' : 'דף נחיתה')) + (isEnglish() ? ' - Landing Page' : ' - דף נחיתה'),
       type: 'page'
     };
   }
@@ -4397,7 +4398,7 @@ Write full landing page content in English, for a US audience, following all the
     const downloadBtn = document.createElement('button');
     downloadBtn.type = 'button';
     downloadBtn.className = 'btn';
-    downloadBtn.textContent = '⬇️ הורדת JSON לוורדפרס Elementor';
+    downloadBtn.textContent = isEnglish() ? '⬇️ Download JSON for WordPress Elementor' : '⬇️ הורדת JSON לוורדפרס Elementor';
     downloadBtn.addEventListener('click', ()=>{
       const po = state.productOffer;
       const jsonObj = buildElementorJSON(lp.content, lp.intake, po.teaser, po.full, po.productType);
@@ -4408,7 +4409,7 @@ Write full landing page content in English, for a US audience, following all the
         box.className = 'landing-fallback-box';
         const note = document.createElement('div');
         note.className = 'intake-hint';
-        note.textContent = 'ההורדה האוטומטית לא זמינה כאן - העתיקו את התוכן הבא ושמרו כקובץ .json:';
+        note.textContent = isEnglish() ? 'Automatic download is not available here - copy the following content and save it as a .json file:' : 'ההורדה האוטומטית לא זמינה כאן - העתיקו את התוכן הבא ושמרו כקובץ .json:';
         const ta = document.createElement('textarea');
         ta.value = jsonText;
         ta.readOnly = true;
@@ -4422,7 +4423,7 @@ Write full landing page content in English, for a US audience, following all the
     const guideBtn = document.createElement('button');
     guideBtn.type = 'button';
     guideBtn.className = 'btn ghost';
-    guideBtn.textContent = '📖 מדריך התקנה בוורדפרס';
+    guideBtn.textContent = isEnglish() ? '📖 WordPress installation guide' : '📖 מדריך התקנה בוורדפרס';
     guideBtn.addEventListener('click', ()=> openInstallGuide());
     actions.appendChild(guideBtn);
 
@@ -4430,7 +4431,7 @@ Write full landing page content in English, for a US audience, following all the
 
     const editLink = document.createElement('span');
     editLink.className = 'bio-edit-link';
-    editLink.textContent = '✏️ לעדכן פרטים ולבנות מחדש';
+    editLink.textContent = isEnglish() ? '✏️ Update details and rebuild' : '✏️ לעדכן פרטים ולבנות מחדש';
     editLink.addEventListener('click', ()=>{ lp.status = 'form'; renderLandingModal(); });
     landingBodyEl.appendChild(document.createElement('br'));
     landingBodyEl.appendChild(editLink);
@@ -4438,7 +4439,15 @@ Write full landing page content in English, for a US audience, following all the
 
   function openInstallGuide(){
     installGuideBodyEl.innerHTML = '';
-    const steps = [
+    const steps = isEnglish() ? [
+      'Make sure the Elementor plugin (or Elementor Pro) is installed and active on your WordPress site.',
+      'Create a new page (Pages > Add New), give it a name, and click "Edit with Elementor".',
+      'Inside the Elementor editor, open the folder icon in the bottom-left corner and choose "Import Template".',
+      'Upload the JSON file you downloaded from the tool.',
+      'Go through all the imported sections and update text, images, and colors as needed - some styling may require manual tweaking depending on your Elementor version.',
+      'If the page has a lead form - connect it to your email service or CRM (Mailchimp, Google Sheets, etc.) via the form settings in Elementor, or use Elementor\'s built-in form widget for a full connection.',
+      'Publish the page and check it on both mobile and desktop before sharing.'
+    ] : [
       'ודאו שתוסף Elementor (או Elementor Pro) מותקן ופעיל באתר הוורדפרס שלכם.',
       'צרו עמוד חדש (Pages > Add New), תנו לו שם, ולחצו על "Edit with Elementor".',
       'בתוך עורך Elementor, פתחו את אייקון התיקיה בפינה השמאלית התחתונה ובחרו "Import Template".',
@@ -4562,6 +4571,8 @@ Write full landing page content in English, for a US audience, following all the
     document.getElementById('bio-revise-btn').textContent = t('revise_btn');
     document.getElementById('script-copy').textContent = t('copy_script_btn');
     document.getElementById('script-teleprompter-btn').textContent = t('teleprompter_btn');
+    document.getElementById('profile-menu-contact').textContent = eng ? '💬 Contact us / questions' : '💬 יצירת קשר / שאלות';
+    document.getElementById('profile-menu-logout').textContent = eng ? '🚪 Log out' : '🚪 התנתקות';
     updateChrome();
     refreshViews();
     renderTabs();
@@ -4581,10 +4592,10 @@ Write full landing page content in English, for a US audience, following all the
     document.getElementById('profile-menu-email').textContent = PROFILE.email;
     const planEl = document.getElementById('profile-menu-plan');
     if(PROFILE.subActive){
-      const expiryStr = PROFILE.subExpiry ? new Date(PROFILE.subExpiry * 1000).toLocaleDateString('he-IL') : '';
-      planEl.textContent = '✅ מנוי פעיל' + (expiryStr ? (' עד ' + expiryStr) : '');
+      const expiryStr = PROFILE.subExpiry ? new Date(PROFILE.subExpiry * 1000).toLocaleDateString(isEnglish() ? 'en-US' : 'he-IL') : '';
+      planEl.textContent = (isEnglish() ? '✅ Active subscription' : '✅ מנוי פעיל') + (expiryStr ? ((isEnglish() ? ' until ' : ' עד ') + expiryStr) : '');
     } else {
-      planEl.textContent = '⚠️ אין מנוי פעיל כרגע';
+      planEl.textContent = isEnglish() ? '⚠️ No active subscription right now' : '⚠️ אין מנוי פעיל כרגע';
     }
     const logoutLink = document.getElementById('profile-menu-logout');
     if(PROFILE.logoutUrl) logoutLink.href = PROFILE.logoutUrl;
