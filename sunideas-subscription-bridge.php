@@ -569,17 +569,23 @@ add_action('template_redirect', function () {
     $current_path = rtrim(urldecode(parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH)), '/');
     $is_front = is_front_page() || is_home() || $current_path === '';
 
-    // --- עמודים ציבוריים (בית / הרשמה / התחברות): במסך מלא, בלי הגבלת גישה ---
+    // --- עמודים ציבוריים (בית / הרשמה / התחברות / en): במסך מלא, בלי הגבלת גישה ---
     // חשוב: לכל אחד יש כאן ברירת מחדל אמיתית וקבועה בקוד (לא רק בתצוגת ההגדרות) -
     // כך שהאתר ממשיך לעבוד נכון גם מיד אחרי התקנה טרייה של התוסף, לפני שמישהו
     // בכלל פתח את מסך ההגדרות ולחץ שמירה.
     $public_pages = [
         ['path' => get_option('sunideas_home_page_url', '/'),
-         'url'  => get_option('sunideas_home_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site.html')],
+         'url'  => get_option('sunideas_home_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site.html'),
+         'lang' => 'he'],
+        ['path' => '/en/',
+         'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site-en.html',
+         'lang' => 'en'],
         ['path' => get_option('sunideas_signup_page_url', '/הרשמה/'),
-         'url'  => get_option('sunideas_signup_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html')],
+         'url'  => get_option('sunideas_signup_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html'),
+         'lang' => null],
         ['path' => get_option('sunideas_login_page_url', '/התחברות/'),
-         'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html')],
+         'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html'),
+         'lang' => null],
     ];
     foreach ($public_pages as $p) {
         if (empty($p['url'])) continue;
@@ -587,6 +593,12 @@ add_action('template_redirect', function () {
         $matches_home = ($p_path_norm === '' && $is_front);
         $matches_path = ($p_path_norm !== '' && $current_path === $p_path_norm);
         if ($matches_home || $matches_path) {
+            // שומרים איזו שפה זיהינו כאן ב-cookie (על כל דומיין האתר), כדי שכשהמשתמש
+            // הזה יגיע בהמשך לעמוד הכלי (אחרי הרשמה/התחברות), הכלי ידע להיפתח
+            // ישר באותה שפה שממנה הוא הגיע - בלי לגעת בכלל בתהליך התשלום/Webhook.
+            if ($p['lang'] && !headers_sent()) {
+                setcookie('sunideas_lang', $p['lang'], time() + 60 * 60 * 24 * 90, '/');
+            }
             sunideas_render_fullbleed_page($p['url']);
         }
     }
@@ -626,12 +638,14 @@ add_action('template_redirect', function () {
     $current_user = wp_get_current_user();
     $sub_active = get_user_meta($current_user->ID, 'sunideas_subscription_active', true);
     $sub_expiry = (int) get_user_meta($current_user->ID, 'sunideas_subscription_expiry', true);
+    $detected_lang = (isset($_COOKIE['sunideas_lang']) && $_COOKIE['sunideas_lang'] === 'en') ? 'en' : 'he';
     $sep = (strpos($tool_iframe_url, '?') === false) ? '?' : '&';
     $tool_iframe_url .= $sep . 'uid=' . $token['uid'] . '&exp=' . $token['exp'] . '&tok=' . urlencode($token['tok'])
         . '&uname=' . urlencode($current_user->display_name)
         . '&uemail=' . urlencode($current_user->user_email)
         . '&subactive=' . ($sub_active === '1' ? '1' : '0')
         . '&subexpiry=' . $sub_expiry
+        . '&lang=' . $detected_lang
         . '&logouturl=' . urlencode(add_query_arg('sunideas_logout', '1', home_url()));
     sunideas_render_fullbleed_page($tool_iframe_url);
 });

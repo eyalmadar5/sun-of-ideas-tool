@@ -1023,7 +1023,14 @@
   ];
 
   // ---------- i18n (Hebrew / English toggle) ----------
-  let LANG = localStorage.getItem('sunideas:lang') || 'he';
+  // עדיפות לפרמטר lang מה-URL (וורדפרס קובע אותו לפי איזה דף שיווק הפנה את
+  // המשתמש - עברית או אנגלית), ורק אם הוא לא קיים נופלים חזרה על מה ששמור
+  // מפעם קודמת בדפדפן. כך מי שהגיע מהדף האנגלי תמיד יפתח את הכלי באנגלית.
+  const urlLangParam = urlParams.get('lang');
+  let LANG = (urlLangParam === 'en' || urlLangParam === 'he')
+    ? urlLangParam
+    : (localStorage.getItem('sunideas:lang') || 'he');
+  try{ localStorage.setItem('sunideas:lang', LANG); }catch(e){}
 
   const I18N = {
     he: {
