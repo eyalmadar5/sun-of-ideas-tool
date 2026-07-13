@@ -2834,7 +2834,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     // 🔧 אבחון זמני
     const _angleDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.angle : 'אין screen.orientation';
     const _typeDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.type : '-';
-    tpShowErrorBox('אבחון2: rawW=' + rawW + ' rawH=' + rawH + ' | angle=' + _angleDebug + ' type=' + _typeDebug + ' | תוקן=' + tpRotationDeg + '° | קנבס=' + canvas.width + 'x' + canvas.height);
+    tpShowErrorBox('Debug: rawW=' + rawW + ' rawH=' + rawH + ' | angle=' + _angleDebug + ' type=' + _typeDebug + ' | rotation=' + tpRotationDeg + '\u00b0 | canvas=' + canvas.width + 'x' + canvas.height);
 
 
     function drawFrame(){
