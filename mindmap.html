@@ -803,7 +803,7 @@
   <div id="topbar">
     <div id="brand">
       <span class="eyebrow" id="brand-eyebrow">מפת רעיונות לתוכן</span>
-      <h1><span class="sun-mark">☀</span> שמש הרעיונות</h1>
+      <h1><span class="sun-mark">☀</span> <span id="brand-h1">שמש הרעיונות</span></h1>
     </div>
     <div id="status-line">
       <span class="root-chip" id="root-chip"></span>
@@ -887,14 +887,14 @@
 
   <div id="teleprompter-overlay">
     <div id="teleprompter-controls">
-      <button type="button" id="tp-close" title="סגירה">✕ סגירה</button>
+      <button type="button" id="tp-close" title="סגירה">✕ <span id="tp-close-label">סגירה</span></button>
       <button type="button" id="tp-camera-toggle">🎥 הפעלת מצלמה</button>
       <div id="tp-rotate-wrap" style="display:none;">
         <canvas id="tp-rotate-preview" width="60" height="107"></canvas>
         <button type="button" id="tp-rotate-left" title="סובב שמאלה">↺</button>
         <button type="button" id="tp-rotate-right" title="סובב ימינה">↻</button>
         <button type="button" id="tp-camera-flip" title="היפוך אופקי">🪞</button>
-        <span style="font-size:11px;color:#ccc;">כוונו עד שהתצוגה הקטנה נראית ישרה</span>
+        <span id="tp-rotate-hint" style="font-size:11px;color:#ccc;">כוונו עד שהתצוגה הקטנה נראית ישרה</span>
       </div>
       <button type="button" id="tp-record-toggle" style="display:none;">⏺️ הקלטה</button>
       <span id="tp-record-timer" style="display:none;"></span>
@@ -902,9 +902,9 @@
       <button type="button" id="tp-download-srt" style="display:none;">📝 הורדת כתוביות (SRT)</button>
       <button type="button" id="tp-reedit-captions" style="display:none;">✏️ עריכת כתוביות מחדש</button>
       <button type="button" id="tp-playpause">⏸️ עצירה</button>
-      <label>מהירות <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
-      <label>גודל טקסט <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
-      <label>שקיפות רקע <input type="range" id="tp-opacity" min="20" max="100" value="85"></label>
+      <label><span id="tp-speed-label">מהירות</span> <input type="range" id="tp-speed" min="1" max="10" value="4"></label>
+      <label><span id="tp-fontsize-label">גודל טקסט</span> <input type="range" id="tp-fontsize" min="24" max="80" value="42"></label>
+      <label><span id="tp-opacity-label">שקיפות רקע</span> <input type="range" id="tp-opacity" min="20" max="100" value="85"></label>
       <button type="button" id="tp-mirror">🪞 הפוך (מראה)</button>
     </div>
     <video id="tp-camera-video" autoplay muted playsinline></video>
@@ -918,7 +918,7 @@
     </div>
     <div id="tp-caption-review-overlay">
       <div id="tp-caption-review-panel">
-        <h3>בדקו ותקנו את הכתוביות לפני שהן נצרבות</h3>
+        <h3 id="tp-caption-review-title">בדקו ותקנו את הכתוביות לפני שהן נצרבות</h3>
         <div id="tp-caption-review-list"></div>
         <div id="tp-caption-review-actions">
           <button type="button" id="tp-caption-review-cancel">דלגו על כתוביות</button>
@@ -949,7 +949,7 @@
   <div id="product-modal">
     <div class="product-modal-header">
       <div>
-        <span class="eyebrow">רעיון למוצר רווחי</span>
+        <span class="eyebrow" id="product-modal-eyebrow">רעיון למוצר רווחי</span>
         <h3 id="product-topic-title"></h3>
       </div>
       <button id="product-close" type="button" title="סגירה">✕</button>
@@ -961,7 +961,7 @@
   <div id="landing-modal">
     <div class="product-modal-header">
       <div>
-        <span class="eyebrow">בניית דף נחיתה</span>
+        <span class="eyebrow" id="landing-eyebrow">בניית דף נחיתה</span>
         <h3 id="landing-topic-title"></h3>
       </div>
       <button id="landing-close" type="button" title="סגירה">✕</button>
@@ -972,7 +972,7 @@
   <div id="install-guide-backdrop"></div>
   <div id="install-guide-modal">
     <div class="product-modal-header">
-      <div><span class="eyebrow">התקנה באתר</span><h3>מדריך התקנה בוורדפרס / Elementor</h3></div>
+      <div><span class="eyebrow" id="install-guide-eyebrow">התקנה באתר</span><h3 id="install-guide-title">מדריך התקנה בוורדפרס / Elementor</h3></div>
       <button id="install-guide-close" type="button" title="סגירה">✕</button>
     </div>
     <div id="install-guide-body"></div>
@@ -2110,10 +2110,10 @@ Write one viral reel script in English about the specific topic, for a US audien
       item.className = 'style-menu-item';
       const title = document.createElement('span');
       title.className = 'style-menu-title';
-      title.textContent = s.label;
+      title.textContent = isEnglish() ? s.labelEn : s.label;
       const desc = document.createElement('span');
       desc.className = 'style-menu-desc';
-      desc.textContent = s.desc;
+      desc.textContent = isEnglish() ? s.descEn : s.desc;
       item.appendChild(title);
       item.appendChild(desc);
       item.addEventListener('click', ()=>{
@@ -4573,6 +4573,33 @@ Write full landing page content in English, for a US audience, following all the
     document.getElementById('script-teleprompter-btn').textContent = t('teleprompter_btn');
     document.getElementById('profile-menu-contact').textContent = eng ? '💬 Contact us / questions' : '💬 יצירת קשר / שאלות';
     document.getElementById('profile-menu-logout').textContent = eng ? '🚪 Log out' : '🚪 התנתקות';
+    document.getElementById('brand-h1').textContent = eng ? 'Idea Booster' : 'שמש הרעיונות';
+    document.getElementById('script-regenerate').textContent = eng ? '🔄 Another script ▾' : '🔄 תסריט אחר ▾';
+    document.getElementById('product-nudge-text').textContent = eng ? '☀️ Want to make money from these ideas?' : '☀️ בא לך לעשות כסף מהרעיונות האלו?';
+    document.getElementById('product-nudge-cta').textContent = eng ? "Let's see how 💡" : 'בואו נראה איך 💡';
+    document.getElementById('product-reopen-fab').title = eng ? 'Product idea' : 'רעיון למוצר';
+    document.getElementById('tp-close-label').textContent = eng ? 'Close' : 'סגירה';
+    document.getElementById('tp-camera-toggle').textContent = tpCameraStream ? (eng ? '🎥 Turn off camera' : '🎥 כיבוי מצלמה') : (eng ? '🎥 Turn on camera' : '🎥 הפעלת מצלמה');
+    document.getElementById('tp-rotate-left').title = eng ? 'Rotate left' : 'סובב שמאלה';
+    document.getElementById('tp-rotate-right').title = eng ? 'Rotate right' : 'סובב ימינה';
+    document.getElementById('tp-camera-flip').title = eng ? 'Horizontal flip' : 'היפוך אופקי';
+    document.getElementById('tp-rotate-hint').textContent = eng ? 'Adjust until the small preview looks straight' : 'כוונו עד שהתצוגה הקטנה נראית ישרה';
+    document.getElementById('tp-record-toggle').textContent = (tpMediaRecorder && tpMediaRecorder.state === 'recording') ? (eng ? '⏹️ Stop recording' : '⏹️ עצירת הקלטה') : (eng ? '⏺️ Record' : '⏺️ הקלטה');
+    document.getElementById('tp-download-srt').textContent = eng ? '📝 Download captions (SRT)' : '📝 הורדת כתוביות (SRT)';
+    document.getElementById('tp-reedit-captions').textContent = eng ? '✏️ Re-edit captions' : '✏️ עריכת כתוביות מחדש';
+    document.getElementById('tp-playpause').textContent = tpPlaying ? (eng ? '⏸️ Pause' : '⏸️ עצירה') : (eng ? '\u25b6\ufe0f Continue' : '▶️ המשך');
+    document.getElementById('tp-speed-label').textContent = eng ? 'Speed' : 'מהירות';
+    document.getElementById('tp-fontsize-label').textContent = eng ? 'Text size' : 'גודל טקסט';
+    document.getElementById('tp-opacity-label').textContent = eng ? 'Background opacity' : 'שקיפות רקע';
+    document.getElementById('tp-mirror').textContent = eng ? '🪞 Flip (mirror)' : '🪞 הפוך (מראה)';
+    document.getElementById('tp-error-close').textContent = eng ? 'Close' : 'סגירה';
+    document.getElementById('tp-caption-review-title').textContent = eng ? 'Review and fix the captions before they\'re burned in' : 'בדקו ותקנו את הכתוביות לפני שהן נצרבות';
+    document.getElementById('tp-caption-review-cancel').textContent = eng ? 'Skip captions' : 'דלגו על כתוביות';
+    document.getElementById('tp-caption-review-confirm').textContent = eng ? '✅ Confirm and burn in' : '✅ אישור וצריבה';
+    document.getElementById('landing-eyebrow').textContent = eng ? 'Building landing page' : 'בניית דף נחיתה';
+    document.getElementById('install-guide-eyebrow').textContent = eng ? 'Site installation' : 'התקנה באתר';
+    document.getElementById('install-guide-title').textContent = eng ? 'WordPress / Elementor installation guide' : 'מדריך התקנה בוורדפרס / Elementor';
+    document.getElementById('product-modal-eyebrow').textContent = eng ? 'Profitable product idea' : 'רעיון למוצר רווחי';
     updateChrome();
     refreshViews();
     renderTabs();
