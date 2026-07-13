@@ -866,7 +866,7 @@
   <div id="script-panel">
     <div class="script-panel-header">
       <div>
-        <span class="eyebrow">תסריט לריל ויראלי</span>
+        <span class="eyebrow" id="script-eyebrow">תסריט לריל ויראלי</span>
         <h3 id="script-topic-title"></h3>
       </div>
       <button id="script-close" type="button" title="סגירה">✕</button>
@@ -932,7 +932,7 @@
   <div id="bio-panel">
     <div class="script-panel-header">
       <div>
-        <span class="eyebrow">ביו ממיר לעמוד העסקי</span>
+        <span class="eyebrow" id="bio-eyebrow">ביו ממיר לעמוד העסקי</span>
         <h3 id="bio-topic-title"></h3>
       </div>
       <button id="bio-close" type="button" title="סגירה">✕</button>
@@ -1042,6 +1042,14 @@
       profile_title: 'החשבון שלי',
       lang_toggle_label: 'EN',
       whats_app_label: 'ייעוץ ושאלות בוואטסאפ',
+      script_eyebrow: 'תסריט לריל ויראלי',
+      bio_eyebrow: 'ביו ממיר לעמוד העסקי',
+      script_revise_placeholder: 'רוצים שינוי? למשל: \'תעשו את זה יותר קליל\' או \'קצרו את ההוק\'',
+      bio_revise_placeholder: 'רוצים שינוי? למשל: \'תעשו את זה יותר בטוח עצמי\'',
+      revise_btn: '✏️ עדכנו',
+      copy_script_btn: 'העתקת התסריט',
+      copy_bio_btn: 'העתקת הביו',
+      teleprompter_btn: '📽️ טלפרומפטר',
     },
     en: {
       eyebrow_brand: 'Content idea map',
@@ -1059,6 +1067,14 @@
       profile_title: 'My account',
       lang_toggle_label: 'עב',
       whats_app_label: 'Questions? Chat on WhatsApp',
+      script_eyebrow: 'Viral reel script',
+      bio_eyebrow: 'Bio converter for your business page',
+      script_revise_placeholder: 'Want a change? e.g.: "make it more casual" or "shorten the hook"',
+      bio_revise_placeholder: 'Want a change? e.g.: "make it more confident"',
+      revise_btn: '✏️ Update',
+      copy_script_btn: 'Copy script',
+      copy_bio_btn: 'Copy bio',
+      teleprompter_btn: '📽️ Teleprompter',
     }
   };
   function t(key){ return (I18N[LANG] && I18N[LANG][key]) || I18N.he[key] || key; }
@@ -3139,7 +3155,7 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
     copyBtn.type = 'button';
     copyBtn.className = 'btn';
     copyBtn.style.flex = '1 1 auto';
-    copyBtn.textContent = 'העתקת הביו';
+    copyBtn.textContent = t('copy_bio_btn');
     copyBtn.addEventListener('click', ()=>{
       const text = bioToPlainText(result);
       copyTextSmart(text, copyBtn);
@@ -4523,6 +4539,14 @@ Write full landing page content in English, for a US audience, following all the
     document.getElementById('start-btn').textContent = t('start_btn');
     document.getElementById('lang-toggle-btn').textContent = t('lang_toggle_label');
     document.getElementById('profile-btn').title = t('profile_title');
+    document.getElementById('script-eyebrow').textContent = t('script_eyebrow');
+    document.getElementById('bio-eyebrow').textContent = t('bio_eyebrow');
+    document.getElementById('script-revise-input').placeholder = t('script_revise_placeholder');
+    document.getElementById('bio-revise-input').placeholder = t('bio_revise_placeholder');
+    document.getElementById('script-revise-btn').textContent = t('revise_btn');
+    document.getElementById('bio-revise-btn').textContent = t('revise_btn');
+    document.getElementById('script-copy').textContent = t('copy_script_btn');
+    document.getElementById('script-teleprompter-btn').textContent = t('teleprompter_btn');
     updateChrome();
     refreshViews();
     renderTabs();
