@@ -27,12 +27,27 @@ function corsHeaders(request) {
   };
 }
 
+// אבטחה: הכותרות של corsHeaders() הן רק המלצה לדפדפנים - הן לא חוסמות בפועל
+// קריאה ישירה מ-curl/סקריפט/שרת אחר (ל-Origin אין אכיפה מחוץ לדפדפן). הפונקציה
+// הזו כן חוסמת בצד השרת: אם יש כותרת Origin ואינה ברשימה המורשית - דוחים.
+// (בקשות בלי Origin בכלל, כמו מ-curl גולמי, עדיין עוברות כרגע - זה מצמצם
+// ניצול לרעה אבל לא מחליף אימות אמיתי; ראו ההמלצה המורחבת שניתנה בנפרד).
+function isOriginAllowed(request) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return true; // כלי בדיקה/סקריפטים פנימיים לרוב לא שולחים Origin בכלל
+  return ALLOWED_ORIGINS.includes(origin);
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders(request) });
+    }
+
+    if (!isOriginAllowed(request)) {
+      return jsonResponse(request, { error: { message: "Origin not allowed" } }, 403);
     }
 
     if (url.pathname === "/transcribe") {
@@ -116,6 +131,10 @@ async function handleTranscribe(request, env) {
   const audioFile = incomingForm.get("file");
   if (!audioFile) {
     return jsonResponse(request, { error: { message: "Missing 'file' field" } }, 400);
+  }
+  const MAX_AUDIO_BYTES = 30 * 1024 * 1024; // 30MB - תואם לוידאו טלפרומפטר סביר, בלי לתת פתח לניצול לרעה
+  if (audioFile.size > MAX_AUDIO_BYTES) {
+    return jsonResponse(request, { error: { message: "File too large (max 30MB)" } }, 413);
   }
   const lang = incomingForm.get("language") || "he"; // ברירת מחדל לעברית לתאימות לאחור
 

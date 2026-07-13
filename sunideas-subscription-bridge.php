@@ -401,18 +401,18 @@ function sunideas_handle_grow_webhook(WP_REST_Request $request) {
     // Grow שולחת כמה פורמטים אפשריים - מנסים לשלוף שדות בכל הפורמטים הידועים
     $data = isset($body['data']) ? $body['data'] : $body; // פורמט PaymentLinks עוטף בתוך "data"
 
-    $email = sunideas_find_email_recursive($data);
-    $full_name = $data['fullName'] ?? $data['payer_name'] ?? $data['customerName'] ?? '';
+    $email = sanitize_email(sunideas_find_email_recursive($data));
+    $full_name = sanitize_text_field($data['fullName'] ?? $data['payer_name'] ?? $data['customerName'] ?? '');
     $payment_sum = $data['sum'] ?? $data['paymentSum'] ?? 0;
-    $description = $data['description'] ?? $data['paymentDesc'] ?? '';
+    $description = sanitize_text_field($data['description'] ?? $data['paymentDesc'] ?? '');
     $is_failure = isset($body['error_message']) || isset($body['charges_attempts']);
     $status_code = $data['statusCode'] ?? null;
 
-    if (empty($email)) {
+    if (empty($email) || !is_email($email)) {
         // שומרים את המבנה המדויק שהתקבל, כדי לאבחן מיד בפעם הבאה בלי ניחושים
         update_option('sunideas_last_failed_payload', wp_json_encode($body));
-        sunideas_log_event('שגיאה', '-', 'לא נמצא אימייל בבקשה - ראו "המטען האחרון שנכשל" למטה');
-        return new WP_REST_Response(['error' => 'no email in payload'], 400);
+        sunideas_log_event('שגיאה', '-', 'לא נמצא אימייל תקין בבקשה - ראו "המטען האחרון שנכשל" למטה');
+        return new WP_REST_Response(['error' => 'no valid email in payload'], 400);
     }
 
     if ($is_failure) {
