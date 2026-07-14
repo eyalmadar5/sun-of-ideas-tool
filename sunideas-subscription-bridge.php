@@ -354,7 +354,10 @@ add_action('rest_api_init', function () {
             header('Access-Control-Allow-Origin: ' . esc_url_raw($origin));
             header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
             header('Access-Control-Allow-Headers: Content-Type');
-            header('Access-Control-Allow-Credentials: false');
+            // חייב להיות true כדי שקריאות fetch עם credentials:'include' (התחברות/הרשמה
+            // חוצות-מקור מתוך ה-iframe) יוכלו בכלל לקבל את עוגיית האימות של וורדפרס.
+            // בטוח לעשות זאת כי Allow-Origin תמיד מקור ספציפי שאומת, לעולם לא "*".
+            header('Access-Control-Allow-Credentials: true');
         }
         return $value;
     });
@@ -399,72 +402,88 @@ function sunideas_handle_load_workspace(WP_REST_Request $request) {
  * עבור אפליקציית ה-Client ID שלנו (לא רק שהוא token אמיתי כלשהו), ומתחברים
  * רק אם כבר קיים משתמש בוורדפרס עם בדיוק אותו אימייל - כלומר מישהו ששילם
  * ונרשם בעבר תחת האימייל הזה. אין כאן יצירת חשבון חדש - רק כניסה לקיים.
+ * הלוגיקה עצמה מופרדת מהחזרת תגובת ה-HTTP, מאותה סיבה כמו בהרשמת ניסיון
+ * (admin-post עם ניווט אמיתי, לא fetch חוצה-מקור, כדי שהעוגיה תיקבע נכון).
  */
-function sunideas_handle_google_login(WP_REST_Request $request) {
-    nocache_headers();
-    $params = $request->get_json_params();
-    $id_token = $params['credential'] ?? '';
+function sunideas_google_login_core($id_token) {
     if (empty($id_token)) {
-        return new WP_REST_Response(['error' => 'missing_token'], 400);
+        return ['ok' => false, 'error' => 'missing_token'];
     }
-
     $client_id = get_option('sunideas_google_client_id', '');
     if (empty($client_id)) {
-        return new WP_REST_Response(['error' => 'google_not_configured'], 500);
+        return ['ok' => false, 'error' => 'google_not_configured'];
     }
 
-    // מאמתים את ה-token מול גוגל (החתימה, התוקף, וזהות האפליקציה שהנפיקה אותו)
     $verify_url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($id_token);
     $response = wp_remote_get($verify_url, ['timeout' => 8]);
     if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
-        return new WP_REST_Response(['error' => 'google_verification_failed'], 401);
+        return ['ok' => false, 'error' => 'google_verification_failed'];
     }
     $token_data = json_decode(wp_remote_retrieve_body($response), true);
     if (empty($token_data['email']) || ($token_data['email_verified'] ?? 'false') !== 'true') {
-        return new WP_REST_Response(['error' => 'email_not_verified'], 401);
+        return ['ok' => false, 'error' => 'email_not_verified'];
     }
-    // קריטי: מוודאים שה-token הונפק במפורש עבור האפליקציה שלנו, לא עבור אפליקציית גוגל אחרת כלשהי
     if (($token_data['aud'] ?? '') !== $client_id) {
         sunideas_log_event('אימות גוגל נכשל', $token_data['email'] ?? '-', 'aud לא תואם - token לא הונפק עבור האפליקציה הזו');
-        return new WP_REST_Response(['error' => 'invalid_audience'], 401);
+        return ['ok' => false, 'error' => 'invalid_audience'];
     }
 
     $email = sanitize_email($token_data['email']);
     $user = get_user_by('email', $email);
     if (!$user) {
         sunideas_log_event('התחברות גוגל', $email, 'נדחה - אין חשבון קיים תחת האימייל הזה');
-        return new WP_REST_Response(['error' => 'no_account', 'email' => $email], 404);
+        return ['ok' => false, 'error' => 'no_account', 'email' => $email];
     }
 
-    // מתחברים בפועל למשתמש הקיים
     wp_set_current_user($user->ID);
     wp_set_auth_cookie($user->ID, true);
     sunideas_log_event('התחברות גוגל', $email, 'הצלחה');
-
     $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
-    return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url], 200);
+    return ['ok' => true, 'redirect' => $tool_url];
 }
+
+function sunideas_handle_google_login(WP_REST_Request $request) {
+    nocache_headers();
+    $params = $request->get_json_params();
+    $result = sunideas_google_login_core($params['credential'] ?? '');
+    return new WP_REST_Response($result, $result['ok'] ? 200 : 401);
+}
+
+function sunideas_handle_google_login_formpost() {
+    $result = sunideas_google_login_core($_POST['credential'] ?? '');
+    if ($result['ok']) {
+        wp_safe_redirect($result['redirect']);
+    } else {
+        $login_url = home_url(get_option('sunideas_login_page_url', '/התחברות/'));
+        wp_safe_redirect(add_query_arg('google_error', $result['error'], $login_url));
+    }
+    exit;
+}
+add_action('admin_post_nopriv_sunideas_google_login', 'sunideas_handle_google_login_formpost');
+add_action('admin_post_sunideas_google_login', 'sunideas_handle_google_login_formpost');
 
 /**
  * הרשמה מינימלית לניסיון חינם - רק אימייל, סיסמה נוצרת אוטומטית ונשלחת במייל.
  * לא עובר דרך Grow/תשלום בכלל. אם כבר קיים חשבון עם האימייל הזה (בין אם ניסיון
  * ובין אם בתשלום) - לא יוצרים חשבון נוסף ולא "מאפסים" ניסיון שכבר נוצל.
+ * הפונקציה הזו רק מבצעת את הלוגיקה ומחזירה מערך תוצאה - לא שולחת תגובת HTTP
+ * בעצמה, כדי שאפשר יהיה לקרוא לה גם מנקודת קצה REST (JSON) וגם מנקודת קצה
+ * admin-post רגילה (הפניה אמיתית ברמת הדפדפן, נחוצה כדי שעוגיית ההתחברות
+ * תיקבע נכון - קריאת fetch חוצת-מקור מתוך ה-iframe לא תמיד קובעת עוגיות
+ * בגלל הגבלות SameSite/צד-שלישי בדפדפנים מודרניים).
  */
-function sunideas_handle_start_trial(WP_REST_Request $request) {
-    $params = $request->get_json_params();
-    $email = sanitize_email($params['email'] ?? '');
+function sunideas_start_trial_core($email) {
+    $email = sanitize_email($email);
     if (empty($email) || !is_email($email)) {
-        return new WP_REST_Response(['error' => 'invalid_email'], 400);
+        return ['ok' => false, 'error' => 'invalid_email'];
     }
 
     $existing = get_user_by('email', $email);
     if ($existing) {
-        // כבר יש חשבון (ניסיון קודם או משלם) - לא יוצרים חדש, פשוט מחברים אליו.
-        // חשוב: זה בדיוק המנגנון שמונע "לרענן ניסיון" בעזרת אימייל שכבר נוצל.
         wp_set_current_user($existing->ID);
         wp_set_auth_cookie($existing->ID, true);
         $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
-        return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url, 'existing' => true], 200);
+        return ['ok' => true, 'redirect' => $tool_url, 'existing' => true];
     }
 
     $username = sanitize_user(current(explode('@', $email)) . '_' . wp_rand(1000, 9999));
@@ -472,10 +491,9 @@ function sunideas_handle_start_trial(WP_REST_Request $request) {
     $user_id = wp_create_user($username, $random_password, $email);
     if (is_wp_error($user_id)) {
         sunideas_log_event('שגיאת יצירת ניסיון חינם', $email, $user_id->get_error_message());
-        return new WP_REST_Response(['error' => 'signup_failed'], 500);
+        return ['ok' => false, 'error' => 'signup_failed'];
     }
 
-    // מסמנים כמשתמש ניסיון (לא מנוי משלם), עם מוני שימוש שמתחילים מאפס
     update_user_meta($user_id, 'sunideas_subscription_active', '0');
     update_user_meta($user_id, 'sunideas_is_trial', '1');
     update_user_meta($user_id, 'sunideas_trial_expansions_used', '0');
@@ -495,8 +513,34 @@ function sunideas_handle_start_trial(WP_REST_Request $request) {
 
     wp_set_current_user($user_id);
     wp_set_auth_cookie($user_id, true);
-    return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url, 'existing' => false], 200);
+    return ['ok' => true, 'redirect' => $tool_url, 'existing' => false];
 }
+
+function sunideas_handle_start_trial(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+    $result = sunideas_start_trial_core($params['email'] ?? '');
+    return new WP_REST_Response($result, $result['ok'] ? 200 : 400);
+}
+
+/**
+ * גרסת admin-post: מטופלת כניווט רגיל של הדפדפן (form POST עם target="_top"),
+ * לא כקריאת fetch מתוך ה-iframe - כך שקביעת עוגיית ההתחברות קורית באותו
+ * מקור בדיוק (ideabooster.app), בלי שום מגבלת CORS/SameSite חוצה-מקור.
+ * זו אותה שיטה בדיוק שכבר עובדת היום עבור טופס ההתחברות הרגיל (wp-login.php).
+ */
+function sunideas_handle_start_trial_formpost() {
+    $email = sanitize_email($_POST['email'] ?? '');
+    $result = sunideas_start_trial_core($email);
+    if ($result['ok']) {
+        wp_safe_redirect($result['redirect']);
+    } else {
+        $signup_url = home_url(get_option('sunideas_signup_page_url', '/הרשמה/'));
+        wp_safe_redirect(add_query_arg('trial_error', $result['error'], $signup_url));
+    }
+    exit;
+}
+add_action('admin_post_nopriv_sunideas_start_trial', 'sunideas_handle_start_trial_formpost');
+add_action('admin_post_sunideas_start_trial', 'sunideas_handle_start_trial_formpost');
 
 /**
  * בדיקה + ספירה של מגבלות הניסיון החינם - הלב של האכיפה. חייב לרוץ בצד השרת

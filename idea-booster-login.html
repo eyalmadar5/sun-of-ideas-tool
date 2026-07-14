@@ -219,46 +219,46 @@ document.addEventListener('DOMContentLoaded', async function() {
         divider.style.cssText = 'display:flex;align-items:center;gap:12px;margin:22px 0;color:#B5A48E;font-size:13px;font-family:Rubik,sans-serif;';
         divider.innerHTML = '<span style="flex:1;height:1px;background:#E4DBC4;"></span>או<span style="flex:1;height:1px;background:#E4DBC4;"></span>';
 
+        var urlParams = new URLSearchParams(window.location.search);
+        var googleError = urlParams.get('google_error');
         var msg = document.createElement('div');
         msg.id = 'google-signin-msg';
-        msg.style.cssText = 'text-align:center;font-size:13.5px;font-family:Rubik,sans-serif;margin-top:12px;display:none;';
+        msg.style.cssText = 'text-align:center;font-size:13.5px;font-family:Rubik,sans-serif;margin-top:12px;color:#B3261E;';
+        if(googleError === 'no_account'){
+          msg.textContent = 'לא נמצא חשבון קיים עם המייל הזה. אם עוד לא נרשמתם, לחצו על "הרשמה" למעלה.';
+        } else if(googleError){
+          msg.textContent = 'ההתחברות עם Google נכשלה, נסו שוב או השתמשו בטופס הרגיל.';
+        } else {
+          msg.style.display = 'none';
+        }
 
         var btnHost = document.createElement('div');
         btnHost.style.cssText = 'display:flex;justify-content:center;';
 
+        // טופס נסתר שמוגש כניווט עליון אמיתי (target="_top") - לא קריאת fetch
+        // חוצת-מקור - כדי שעוגיית ההתחברות של וורדפרס תיקבע נכון, בדיוק כמו
+        // שטופס ההתחברות הרגיל כבר עושה. הפרטים של גוגל (ה-credential) רק
+        // "עוברים דרך" שדה נסתר בטופס הזה.
+        var hiddenForm = document.createElement('form');
+        hiddenForm.action = 'https://ideabooster.app/wp-admin/admin-post.php';
+        hiddenForm.method = 'POST';
+        hiddenForm.target = '_top';
+        hiddenForm.style.display = 'none';
+        hiddenForm.innerHTML =
+          '<input type="hidden" name="action" value="sunideas_google_login">' +
+          '<input type="hidden" name="credential" id="sunideas-google-credential">';
+
         wrap.appendChild(divider);
         wrap.appendChild(btnHost);
         wrap.appendChild(msg);
+        wrap.appendChild(hiddenForm);
         form.parentElement.insertBefore(wrap, form.nextSibling);
 
         window.google.accounts.id.initialize({
           client_id: cfg.client_id,
           callback: function(response){
-            msg.style.display = 'none';
-            fetch('https://ideabooster.app/wp-json/sunideas/v1/google-login', {
-              method: 'POST',
-              headers: {'Content-Type':'application/json'},
-              body: JSON.stringify({ credential: response.credential })
-            })
-            .then(function(r){ return r.json().then(function(data){ return {status:r.status, data:data}; }); })
-            .then(function(res){
-              if(res.status === 200 && res.data.redirect){
-                window.top.location.href = res.data.redirect;
-              } else if(res.status === 404){
-                msg.style.display = 'block';
-                msg.style.color = '#B3261E';
-                msg.textContent = 'לא נמצא חשבון קיים עם המייל הזה (' + (res.data.email || '') + '). אם עוד לא נרשמתם, לחצו על "הרשמה" למעלה.';
-              } else {
-                msg.style.display = 'block';
-                msg.style.color = '#B3261E';
-                msg.textContent = 'ההתחברות עם Google נכשלה, נסו שוב או השתמשו בטופס הרגיל.';
-              }
-            })
-            .catch(function(){
-              msg.style.display = 'block';
-              msg.style.color = '#B3261E';
-              msg.textContent = 'שגיאת רשת - נסו שוב.';
-            });
+            document.getElementById('sunideas-google-credential').value = response.credential;
+            hiddenForm.submit();
           }
         });
         window.google.accounts.id.renderButton(btnHost, {

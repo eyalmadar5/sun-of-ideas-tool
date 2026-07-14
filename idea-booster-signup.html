@@ -209,60 +209,38 @@ document.addEventListener('DOMContentLoaded', async function() {
     var banner = document.createElement('div');
     banner.id = 'sunideas-trial-banner';
     banner.style.cssText = 'max-width:480px;margin:32px auto;padding:24px;background:#fff;border:1.5px solid #E4DBC4;border-radius:20px;box-shadow:0 8px 24px rgba(36,38,31,0.1);font-family:Rubik,sans-serif;direction:rtl;text-align:center;';
+
+    var urlParams = new URLSearchParams(window.location.search);
+    var trialError = urlParams.get('trial_error');
+    var errMsg = '';
+    if(trialError === 'signup_failed') errMsg = 'משהו השתבש ביצירת החשבון, נסו שוב.';
+    else if(trialError === 'invalid_email') errMsg = 'נא להזין אימייל תקין.';
+
     banner.innerHTML =
       '<div style="font-size:17px;font-weight:700;color:#3A2A1A;margin-bottom:6px;">רוצים לנסות לפני שמחליטים?</div>' +
       '<div style="font-size:13.5px;color:#8A7A66;margin-bottom:16px;">מפת רעיונות ראשונית, הרחבה נוספת אחת, ותסריט ריל אחד מלא - חינם, בלי כרטיס אשראי</div>' +
-      '<div style="display:flex;gap:8px;max-width:360px;margin:0 auto;">' +
-        '<input id="sunideas-trial-email" type="email" placeholder="האימייל שלכם" style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14px;">' +
-        '<button id="sunideas-trial-submit" type="button" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:12px 20px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;">התחלת ניסיון</button>' +
-      '</div>' +
-      '<div id="sunideas-trial-msg" style="font-size:13px;margin-top:10px;display:none;"></div>';
+      (errMsg ? '<div style="font-size:13px;color:#B3261E;margin-bottom:10px;">' + errMsg + '</div>' : '') +
+      '<form id="sunideas-trial-form" action="https://ideabooster.app/wp-admin/admin-post.php" method="POST" target="_top" style="display:flex;gap:8px;max-width:360px;margin:0 auto;">' +
+        '<input type="hidden" name="action" value="sunideas_start_trial">' +
+        '<input id="sunideas-trial-email" name="email" type="email" required placeholder="האימייל שלכם" style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14px;">' +
+        '<button id="sunideas-trial-submit" type="submit" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:12px 20px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;">התחלת ניסיון</button>' +
+      '</form>';
 
     var anchor = document.querySelector('h1, [class*="pricing"], body > div');
     (anchor && anchor.parentElement ? anchor.parentElement : body).insertBefore(banner, anchor ? anchor.nextSibling : body.firstChild);
 
-    var emailInput = document.getElementById('sunideas-trial-email');
-    var submitBtn = document.getElementById('sunideas-trial-submit');
-    var msg = document.getElementById('sunideas-trial-msg');
-
-    function submit(){
-      var email = (emailInput.value || '').trim();
+    // הטופס שולח כניווט עליון אמיתי (target="_top") ישירות ל-admin-post.php של
+    // וורדפרס - בדיוק כמו טופס ההתחברות הרגיל. זה קריטי: קריאת fetch חוצת-מקור
+    // מתוך ה-iframe לא תמיד קובעת עוגיית התחברות בגלל הגבלות SameSite/עוגיות
+    // צד-שלישי בדפדפנים מודרניים - ניווט טופס רגיל לא מושפע מזה בכלל.
+    document.getElementById('sunideas-trial-form').addEventListener('submit', function(e){
+      var email = document.getElementById('sunideas-trial-email').value.trim();
       if(!email || email.indexOf('@') === -1){
-        msg.style.display = 'block'; msg.style.color = '#B3261E';
-        msg.textContent = 'נא להזין אימייל תקין.';
+        e.preventDefault();
         return;
       }
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'רגע...';
-      fetch('https://ideabooster.app/wp-json/sunideas/v1/start-trial', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ email: email })
-      })
-      .then(function(r){ return r.json(); })
-      .then(function(data){
-        if(data.ok && data.redirect){
-          msg.style.display = 'block'; msg.style.color = '#1E6E4C';
-          msg.textContent = data.existing
-            ? 'כבר יש לכם חשבון - מעבירים אתכם פנימה...'
-            : 'הניסיון שלכם מוכן! שלחנו גם את פרטי הכניסה למייל. מעבירים אתכם פנימה...';
-          setTimeout(function(){ window.top.location.href = data.redirect; }, 1200);
-        } else {
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'התחלת ניסיון';
-          msg.style.display = 'block'; msg.style.color = '#B3261E';
-          msg.textContent = 'משהו השתבש, נסו שוב.';
-        }
-      })
-      .catch(function(){
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'התחלת ניסיון';
-        msg.style.display = 'block'; msg.style.color = '#B3261E';
-        msg.textContent = 'שגיאת רשת - נסו שוב.';
-      });
-    }
-    submitBtn.addEventListener('click', submit);
-    emailInput.addEventListener('keydown', function(e){ if(e.key === 'Enter') submit(); });
+      document.getElementById('sunideas-trial-submit').textContent = 'רגע...';
+    });
   }
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
     setTimeout(init, 400);
