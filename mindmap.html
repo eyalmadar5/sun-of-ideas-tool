@@ -98,6 +98,56 @@
     max-width:360px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
 
+  #mobile-menu-btn{
+    display:none; /* מוצג רק במובייל */
+    flex:0 0 auto;width:40px;height:40px;border-radius:12px;
+    background:var(--paper-2);border:1.5px solid var(--line);cursor:pointer;
+    font-size:18px;color:var(--ink);margin-right:auto;
+  }
+  #mobile-drawer-backdrop{
+    display:none;position:fixed;inset:0;z-index:59;background:rgba(20,20,15,0.4);
+  }
+  #mobile-drawer-backdrop.open{display:block;}
+  #mobile-drawer-header{display:none;}
+  #mobile-drawer-actions{display:none;}
+  .mobile-only-rule{display:none;}
+
+  @media (max-width: 720px){
+    #status-line{ display:none !important; } /* התוכן עובר לתפריט הצד */
+    #mobile-menu-btn{ display:block; }
+    #profile-menu{
+      display:flex !important; /* קיים תמיד ב-DOM במובייל, נשלט ע"י translateX */
+      flex-direction:column;
+      position:fixed; top:0; bottom:0; left:auto; right:0;
+      width:min(84vw, 320px); max-width:none;
+      border-radius:0; border:none; border-inline-start:1.5px solid var(--line);
+      padding:0; min-width:0;
+      transform:translateX(100%);
+      transition:transform .28s cubic-bezier(.2,.8,.3,1);
+      z-index:60; overflow-y:auto;
+    }
+    html[dir="ltr"] #profile-menu{ right:auto; left:0; transform:translateX(-100%); }
+    #profile-menu.open{ transform:translateX(0); }
+    #mobile-drawer-header{
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 20px; border-bottom:1px solid var(--line); flex:0 0 auto;
+    }
+    #mobile-drawer-title{font-family:'Suez One',serif;font-size:18px;color:var(--ink);}
+    #mobile-drawer-close{
+      background:none;border:none;font-size:18px;color:var(--ink-soft);cursor:pointer;padding:6px;
+    }
+    #mobile-drawer-actions{
+      display:flex;flex-direction:column;gap:10px;padding:16px 20px;flex:0 0 auto;
+    }
+    #mobile-drawer-actions .btn, #mobile-lang-toggle-btn{width:100%;text-align:center;}
+    .mobile-only-rule{display:block;border:none;border-top:1px solid var(--line);margin:0;}
+    #profile-menu-name, #profile-menu-email, #profile-menu-plan, #profile-menu a{
+      padding-left:20px;padding-right:20px;
+    }
+    #profile-menu-name{padding-top:16px;}
+    #profile-menu a{padding-top:12px;padding-bottom:12px;font-size:14.5px;}
+  }
+
   /* ---------- TABS BAR ---------- */
   #tabs-bar{
     flex:0 0 auto;display:flex;align-items:center;gap:8px;
@@ -804,7 +854,7 @@
   <div id="topbar">
     <div id="brand">
       <span class="eyebrow" id="brand-eyebrow">מפת רעיונות לתוכן</span>
-      <h1><span class="sun-mark">☀</span> <span id="brand-h1">שמש הרעיונות</span></h1>
+      <h1><span class="sun-mark">☀</span> <span id="brand-h1">Idea Booster</span></h1>
     </div>
     <div id="status-line">
       <span class="root-chip" id="root-chip"></span>
@@ -812,9 +862,20 @@
       <button id="lang-toggle-btn" type="button" title="Switch language">EN</button>
       <button id="profile-btn" type="button" title="החשבון שלי">👤</button>
     </div>
+    <button id="mobile-menu-btn" type="button" title="תפריט" aria-label="תפריט">☰</button>
   </div>
 
+  <div id="mobile-drawer-backdrop"></div>
   <div id="profile-menu">
+    <div id="mobile-drawer-header">
+      <span id="mobile-drawer-title">Idea Booster</span>
+      <button id="mobile-drawer-close" type="button" aria-label="סגירה">✕</button>
+    </div>
+    <div id="mobile-drawer-actions">
+      <button class="btn ghost" id="mobile-view-toggle" type="button">הצג כרשימה</button>
+      <button id="mobile-lang-toggle-btn" type="button">EN</button>
+    </div>
+    <hr class="mobile-only-rule">
     <div id="profile-menu-name"></div>
     <div id="profile-menu-email"></div>
     <div id="profile-menu-plan"></div>
@@ -1609,6 +1670,8 @@
     listView.style.display = (hasRoot && workspace.viewMode === 'list') ? 'block' : 'none';
     if(hasRoot) rootChip.textContent = state.nodes[state.rootId].text;
     viewToggleBtn.textContent = workspace.viewMode === 'list' ? t('view_map') : t('view_list');
+    const mobileViewToggleBtn = document.getElementById('mobile-view-toggle');
+    if(mobileViewToggleBtn) mobileViewToggleBtn.textContent = viewToggleBtn.textContent;
     if(!hasRoot) topicInput.value = '';
   }
 
@@ -4621,6 +4684,8 @@ Write full landing page content in English, for a US audience, following all the
     topicInput.placeholder = t('topic_placeholder');
     document.getElementById('start-btn').textContent = t('start_btn');
     document.getElementById('lang-toggle-btn').textContent = t('lang_toggle_label');
+    document.getElementById('mobile-lang-toggle-btn').textContent = t('lang_toggle_label');
+    document.getElementById('mobile-drawer-title').textContent = 'Idea Booster';
     document.getElementById('profile-btn').title = t('profile_title');
     document.getElementById('script-eyebrow').textContent = t('script_eyebrow');
     document.getElementById('bio-eyebrow').textContent = t('bio_eyebrow');
@@ -4632,7 +4697,7 @@ Write full landing page content in English, for a US audience, following all the
     document.getElementById('script-teleprompter-btn').textContent = t('teleprompter_btn');
     document.getElementById('profile-menu-contact').textContent = eng ? '💬 Contact us / questions' : '💬 יצירת קשר / שאלות';
     document.getElementById('profile-menu-logout').textContent = eng ? '🚪 Log out' : '🚪 התנתקות';
-    document.getElementById('brand-h1').textContent = eng ? 'Idea Booster' : 'שמש הרעיונות';
+    document.getElementById('brand-h1').textContent = 'Idea Booster';
     document.getElementById('script-regenerate').textContent = eng ? '🔄 Another script ▾' : '🔄 תסריט אחר ▾';
     document.getElementById('product-nudge-text').textContent = eng ? '☀️ Want to make money from these ideas?' : '☀️ בא לך לעשות כסף מהרעיונות האלו?';
     document.getElementById('product-nudge-cta').textContent = eng ? "Let's see how 💡" : 'בואו נראה איך 💡';
@@ -4669,9 +4734,30 @@ Write full landing page content in English, for a US audience, following all the
     applyLanguage();
   });
 
-  // ---------- Profile / account menu ----------
+  // ---------- Profile / account menu (+ mobile drawer) ----------
   const profileBtn = document.getElementById('profile-btn');
   const profileMenu = document.getElementById('profile-menu');
+  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+  const mobileDrawerBackdrop = document.getElementById('mobile-drawer-backdrop');
+  const mobileDrawerClose = document.getElementById('mobile-drawer-close');
+  const mobileViewToggle = document.getElementById('mobile-view-toggle');
+  const mobileLangToggleBtn = document.getElementById('mobile-lang-toggle-btn');
+
+  function openMobileDrawer(){
+    profileMenu.classList.add('open');
+    mobileDrawerBackdrop.classList.add('open');
+  }
+  function closeMobileDrawer(){
+    profileMenu.classList.remove('open');
+    mobileDrawerBackdrop.classList.remove('open');
+  }
+  mobileMenuBtn.addEventListener('click', openMobileDrawer);
+  mobileDrawerClose.addEventListener('click', closeMobileDrawer);
+  mobileDrawerBackdrop.addEventListener('click', closeMobileDrawer);
+  // הכפתורים המשוכפלים בתוך המגירה עושים בדיוק את אותה פעולה כמו המקור בדסקטופ
+  mobileViewToggle.addEventListener('click', ()=>{ toggleViewMode(); });
+  mobileLangToggleBtn.addEventListener('click', ()=>{ document.getElementById('lang-toggle-btn').click(); });
+
   if(HAS_ACCOUNT && PROFILE.email){
     profileBtn.style.display = 'flex';
     document.getElementById('profile-menu-name').textContent = PROFILE.name || PROFILE.email;
@@ -4690,12 +4776,19 @@ Write full landing page content in English, for a US audience, following all the
       profileMenu.classList.toggle('open');
     });
     document.addEventListener('click', (e)=>{
-      if(profileMenu.classList.contains('open') && !profileMenu.contains(e.target) && e.target !== profileBtn){
+      // רק לתפריט הקטן בדסקטופ - במובייל הסגירה קורית רק דרך כפתור ה-X או הרקע הכהה
+      if(window.innerWidth > 720 && profileMenu.classList.contains('open') && !profileMenu.contains(e.target) && e.target !== profileBtn && e.target !== mobileMenuBtn){
         profileMenu.classList.remove('open');
       }
     });
   } else {
     profileBtn.style.display = 'none';
+    // בלי חשבון (למשל בדיקה עצמאית מחוץ לאתר) - מסתירים את חלק הפרופיל, אבל
+    // המגירה עצמה עדיין נפתחת במובייל כדי לתת גישה לפחות למעבר תצוגה/שפה.
+    ['profile-menu-name','profile-menu-email','profile-menu-plan','profile-menu-contact','profile-menu-logout'].forEach(id=>{
+      document.getElementById(id).style.display = 'none';
+    });
+    document.querySelector('#profile-menu hr').style.display = 'none';
   }
 
   (async function init(){
