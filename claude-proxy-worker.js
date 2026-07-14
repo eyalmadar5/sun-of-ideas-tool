@@ -143,6 +143,8 @@ async function handleTranscribe(request, env) {
   openaiForm.append("model", "whisper-1");
   openaiForm.append("response_format", "verbose_json");
   openaiForm.append("language", lang);
+  openaiForm.append("timestamp_granularities[]", "word");
+  openaiForm.append("timestamp_granularities[]", "segment");
 
   let upstreamResponse;
   try {

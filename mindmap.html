@@ -2765,6 +2765,7 @@ Write one viral reel script in English about the specific topic, for a US audien
   let tpRecording = false;
   let tpLastRawBlob = null;   // הווידאו הגולמי (בלי כתוביות) מההקלטה האחרונה - כדי לאפשר עריכה חוזרת בלי צילום מחדש
   let tpLastScriptText = '';  // התסריט ששימש לתיקון האוטומטי, לשימוש חוזר
+  let tpLastRawWords = [];    // תזמון מילה-מילה גולמי מוויספר, לשימוש חוזר גם בעריכה מחדש
   let tpTranscriptSegments = []; // {text, startSec, endSec} — built from Whisper after recording, for the .srt file
 
   function tpFormatSrtTime(sec){
@@ -2778,6 +2779,35 @@ Write one viral reel script in English about the specific topic, for a US audien
   // משווה את התמלול הגולמי מול התסריט המקורי, ומתקן מילים שנשמעות כמו טעויות
   // זיהוי דיבור של מילות תסריט (לפי הקשר, לא רק צליל) - אבל לא נוגע במשפטים
   // או מילים שהדובר הוסיף מעצמו ואינם בתסריט בכלל.
+  // מיישרים את הטקסט הסופי (אחרי תיקון אוטומטי + עריכה ידנית) מול תזמון
+  // המילים המקורי שוויספר החזיר - כדי שהכתוביות יופיעו מילה-מילה בקצב הדיבור
+  // (כמו בכל אפליקציית כתוביות), לא כל המשפט בבת אחת. אם מספר המילים השתנה
+  // בעריכה (הוספה/הסרה), נופלים חזרה על חלוקה יחסית לפי אורך המילה בתוך טווח
+  // הזמן של המשפט - עדיין נראה טבעי, גם אם פחות מדויק מהתזמון המקורי.
+  function tpAlignWordsToSegments(segments, rawWords){
+    const result = [];
+    segments.forEach(seg => {
+      const finalWords = seg.text.split(/\s+/).filter(Boolean);
+      if(finalWords.length === 0) return;
+      const originalInRange = rawWords.filter(w => w.startSec >= seg.startSec - 0.08 && w.endSec <= seg.endSec + 0.08);
+      if(originalInRange.length === finalWords.length){
+        finalWords.forEach((text, i) => {
+          result.push({ text, startSec: originalInRange[i].startSec, endSec: originalInRange[i].endSec });
+        });
+      } else {
+        const totalChars = finalWords.reduce((sum, w) => sum + w.length, 0) || 1;
+        const duration = Math.max(0.05, seg.endSec - seg.startSec);
+        let cursor = seg.startSec;
+        finalWords.forEach(text => {
+          const wordDuration = (text.length / totalChars) * duration;
+          result.push({ text, startSec: cursor, endSec: cursor + wordDuration });
+          cursor += wordDuration;
+        });
+      }
+    });
+    return result;
+  }
+
   async function tpAutoCorrectSegments(segments, scriptText){
     try{
       const indexed = {};
@@ -2897,7 +2927,8 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     try{
       tpTranscriptSegments = editedSegments;
       capStatusEl.textContent = isEnglish() ? '🔥 Burning updated captions into the video...' : '🔥 צורב כתוביות מעודכנות לתוך הווידאו...';
-      const finalBlob = await tpBurnInCaptions(tpLastRawBlob, editedSegments);
+      const alignedWords = tpAlignWordsToSegments(editedSegments, tpLastRawWords);
+      const finalBlob = await tpBurnInCaptions(tpLastRawBlob, alignedWords);
       capStatusEl.textContent = isEnglish() ? '✅ Done! Updated version downloaded' : '✅ מוכן! גרסה מעודכנת ירדה';
       downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
     }catch(err){
@@ -2928,7 +2959,7 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
   // מנגן מחדש את הווידאו שכבר הוקלט (כבר באוריינטציה הנכונה שאושרה), מצייר על
   // כל פריים את הכתובית המתאימה לפי התזמון המדויק מ-Whisper, ומקליט תוצאה
   // חדשה - קובץ אחד מוכן עם כתוביות צרובות בפנים.
-  async function tpBurnInCaptions(videoBlob, segments){
+  async function tpBurnInCaptions(videoBlob, words){
     const sourceVideo = document.createElement('video');
     sourceVideo.src = URL.createObjectURL(videoBlob);
     sourceVideo.muted = true; // לא נרצה שזה יישמע בזמן העיבוד - השמע עדיין נלכד לפלט
@@ -2955,27 +2986,30 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     recorder.ondataavailable = (e)=>{ if(e.data.size > 0) chunks.push(e.data); };
     const donePromise = new Promise(resolve=>{ recorder.onstop = ()=> resolve(new Blob(chunks, {type:'video/webm'})); });
 
-    function findCaptionAt(t){
-      const seg = segments.find(s => t >= s.startSec && t <= s.endSec);
-      return seg ? seg.text : '';
+    function findWordAt(t){
+      const w = words.find(w => t >= w.startSec && t <= w.endSec);
+      return w ? w.text : '';
     }
     function drawLoop(){
       if(sourceVideo.paused || sourceVideo.ended) return;
       ctx.drawImage(sourceVideo, 0, 0, canvas.width, canvas.height);
-      const caption = findCaptionAt(sourceVideo.currentTime);
-      if(caption){
-        const fontSize = Math.round(canvas.width * 0.045);
-        ctx.font = '700 ' + fontSize + 'px Rubik, Arial, sans-serif';
+      const word = findWordAt(sourceVideo.currentTime);
+      if(word){
+        // מילה אחת בכל פעם (בסגנון טיקטוק/כתוביות קריוקי), פונט בולט יותר,
+        // וממוקם גבוה יותר במסך (כשליש מלמעלה, לא צמוד לתחתית כמו קודם).
+        const fontSize = Math.round(canvas.width * 0.075);
+        ctx.font = '800 ' + fontSize + 'px Rubik, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const lines = tpWrapText(ctx, caption, canvas.width * 0.86);
-        const lineHeight = fontSize * 1.3;
-        const boxHeight = lines.length * lineHeight + 24;
-        const boxY = canvas.height - boxHeight - canvas.height * 0.06;
+        const boxY = canvas.height * 0.32;
+        const textWidth = ctx.measureText(word).width;
+        const paddingX = fontSize * 0.55;
+        const boxWidth = Math.min(canvas.width * 0.92, textWidth + paddingX * 2);
+        const boxHeight = fontSize * 1.55;
         ctx.fillStyle = 'rgba(0,0,0,0.62)';
-        ctx.fillRect(canvas.width*0.05, boxY, canvas.width*0.9, boxHeight);
+        ctx.fillRect((canvas.width - boxWidth)/2, boxY - boxHeight/2, boxWidth, boxHeight);
         ctx.fillStyle = '#fff';
-        lines.forEach((line, i)=> ctx.fillText(line, canvas.width/2, boxY + 12 + i*lineHeight + lineHeight/2));
+        ctx.fillText(word, canvas.width/2, boxY);
       }
       requestAnimationFrame(drawLoop);
     }
@@ -3052,6 +3086,12 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
           startSec: seg.start,
           endSec: seg.end
         })).filter(seg => seg.text);
+        const rawWords = (data.words || []).map(w => ({
+          text: (w.word || '').trim(),
+          startSec: w.start,
+          endSec: w.end
+        })).filter(w => w.text);
+        tpLastRawWords = rawWords;
 
         if(segments.length === 0){
           capStatusEl.textContent = isEnglish() ? '⚠️ No speech detected - downloading video without captions' : '⚠️ לא זוהה דיבור - יורד הווידאו בלי כתוביות';
@@ -3075,7 +3115,8 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
             document.getElementById('tp-download-srt').style.display = 'inline-block';
             document.getElementById('tp-reedit-captions').style.display = 'inline-block';
             capStatusEl.textContent = isEnglish() ? '🔥 Burning captions into the video...' : '🔥 צורב כתוביות לתוך הווידאו...';
-            const finalBlob = await tpBurnInCaptions(rawBlob, editedSegments);
+            const alignedWords = tpAlignWordsToSegments(editedSegments, rawWords);
+            const finalBlob = await tpBurnInCaptions(rawBlob, alignedWords);
             capStatusEl.textContent = (isEnglish() ? '✅ Done! (' : '✅ מוכן! (') + editedSegments.length + (isEnglish() ? ' sentences)' : ' משפטים)');
             downloadBlob(finalBlob, 'reel-' + Date.now() + '.webm');
           }
