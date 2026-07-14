@@ -925,6 +925,9 @@ add_action('template_redirect', function () {
         ['path' => get_option('sunideas_login_page_url', '/התחברות/'),
          'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html'),
          'lang' => null],
+        ['path' => '/תודה/',
+         'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-thank-you.html',
+         'lang' => null],
     ];
     foreach ($public_pages as $p) {
         if (empty($p['url'])) continue;
