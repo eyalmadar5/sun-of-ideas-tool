@@ -146,6 +146,16 @@
     }
     #profile-menu-name{padding-top:16px;}
     #profile-menu a{padding-top:12px;padding-bottom:12px;font-size:14.5px;}
+
+    /* פאנלים (תסריט/ביו): שלושה כפתורי footer לא נכנסים בשורה אחת במסך צר */
+    .script-panel-footer{flex-wrap:wrap;}
+    .script-panel-footer .btn, .script-panel-footer .script-regen-wrap{flex:1 1 100%;}
+    #script-teleprompter-btn{order:3;}
+    #script-copy{order:2;}
+    .script-regen-wrap{order:1;}
+    .revise-box{flex-wrap:wrap;}
+    .revise-box input{flex:1 1 100%;}
+    .revise-box button{flex:1 1 100%;}
   }
 
   /* ---------- TABS BAR ---------- */
@@ -431,7 +441,7 @@
     background:var(--card);color:var(--ink);outline:none;
   }
   .tp-caption-review-row input:focus{border-color:var(--sun-deep);}
-  #tp-caption-review-actions{display:flex;gap:10px;padding-top:6px;border-top:1px solid var(--line);}
+  #tp-caption-review-actions{display:flex;flex-wrap:wrap;gap:10px;padding-top:6px;border-top:1px solid var(--line);}
   #tp-caption-review-actions button{
     flex:1 1 auto;font-family:'Heebo',sans-serif;font-weight:700;font-size:13.5px;
     border-radius:10px;padding:11px 14px;cursor:pointer;border:none;
