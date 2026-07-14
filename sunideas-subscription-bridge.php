@@ -98,6 +98,7 @@ add_action('admin_init', function () {
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_login_page_url');
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_login_iframe_url');
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_history_secret');
+    register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_google_client_id');
 });
 
 function sunideas_render_settings_page() {
@@ -128,6 +129,15 @@ function sunideas_render_settings_page() {
                         <input type="text" id="sunideas_history_secret" name="sunideas_history_secret"
                                value="<?php echo esc_attr(get_option('sunideas_history_secret') ?: wp_generate_password(32, false)); ?>" class="regular-text">
                         <p class="description">משמש לזהות בבטחה איזה משתמש מחובר כשהכלי (שרץ מ-GitHub) שומר/טוען את ההיסטוריה שלו - לא צריך לגעת בזה, נוצר אוטומטית.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="sunideas_google_client_id">Google Client ID (התחברות עם Google)</label></th>
+                    <td>
+                        <input type="text" id="sunideas_google_client_id" name="sunideas_google_client_id"
+                               value="<?php echo esc_attr(get_option('sunideas_google_client_id', '')); ?>" class="regular-text"
+                               placeholder="123456789-abc...apps.googleusercontent.com">
+                        <p class="description">מתקבל מ-Google Cloud Console (Credentials → OAuth 2.0 Client IDs). התחברות עם Google תעבוד רק עבור אימיילים שכבר יש להם חשבון קיים באתר (כלומר כבר שילמו/נרשמו) - לא יוצר חשבונות חדשים.</p>
                     </td>
                 </tr>
                 <tr>
@@ -310,6 +320,18 @@ add_action('rest_api_init', function () {
         'callback' => 'sunideas_handle_load_workspace',
         'permission_callback' => '__return_true',
     ]);
+    register_rest_route('sunideas/v1', '/google-login', [
+        'methods' => 'POST',
+        'callback' => 'sunideas_handle_google_login',
+        'permission_callback' => '__return_true', // האימות קורה בתוך הפונקציה מול Google עצמה
+    ]);
+    register_rest_route('sunideas/v1', '/google-config', [
+        'methods' => 'GET',
+        'callback' => function () {
+            return new WP_REST_Response(['client_id' => get_option('sunideas_google_client_id', '')], 200);
+        },
+        'permission_callback' => '__return_true', // Client ID אינו סוד - מיועד להיות גלוי בקוד הצד-לקוח
+    ]);
 });
 
 // הכלי רץ מ-GitHub Pages (מקור אחר) - חייבים לאשר CORS על נקודות הקצה האלה
@@ -360,6 +382,57 @@ function sunideas_handle_load_workspace(WP_REST_Request $request) {
 
     $data = get_user_meta((int) $uid, 'sunideas_workspace_data', true);
     return new WP_REST_Response(['ok' => true, 'data' => $data ?: null], 200);
+}
+
+/**
+ * התחברות עם Google - מאמתים את ה-ID token מול גוגל עצמה, מוודאים שהוא הונפק
+ * עבור אפליקציית ה-Client ID שלנו (לא רק שהוא token אמיתי כלשהו), ומתחברים
+ * רק אם כבר קיים משתמש בוורדפרס עם בדיוק אותו אימייל - כלומר מישהו ששילם
+ * ונרשם בעבר תחת האימייל הזה. אין כאן יצירת חשבון חדש - רק כניסה לקיים.
+ */
+function sunideas_handle_google_login(WP_REST_Request $request) {
+    nocache_headers();
+    $params = $request->get_json_params();
+    $id_token = $params['credential'] ?? '';
+    if (empty($id_token)) {
+        return new WP_REST_Response(['error' => 'missing_token'], 400);
+    }
+
+    $client_id = get_option('sunideas_google_client_id', '');
+    if (empty($client_id)) {
+        return new WP_REST_Response(['error' => 'google_not_configured'], 500);
+    }
+
+    // מאמתים את ה-token מול גוגל (החתימה, התוקף, וזהות האפליקציה שהנפיקה אותו)
+    $verify_url = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($id_token);
+    $response = wp_remote_get($verify_url, ['timeout' => 8]);
+    if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+        return new WP_REST_Response(['error' => 'google_verification_failed'], 401);
+    }
+    $token_data = json_decode(wp_remote_retrieve_body($response), true);
+    if (empty($token_data['email']) || ($token_data['email_verified'] ?? 'false') !== 'true') {
+        return new WP_REST_Response(['error' => 'email_not_verified'], 401);
+    }
+    // קריטי: מוודאים שה-token הונפק במפורש עבור האפליקציה שלנו, לא עבור אפליקציית גוגל אחרת כלשהי
+    if (($token_data['aud'] ?? '') !== $client_id) {
+        sunideas_log_event('אימות גוגל נכשל', $token_data['email'] ?? '-', 'aud לא תואם - token לא הונפק עבור האפליקציה הזו');
+        return new WP_REST_Response(['error' => 'invalid_audience'], 401);
+    }
+
+    $email = sanitize_email($token_data['email']);
+    $user = get_user_by('email', $email);
+    if (!$user) {
+        sunideas_log_event('התחברות גוגל', $email, 'נדחה - אין חשבון קיים תחת האימייל הזה');
+        return new WP_REST_Response(['error' => 'no_account', 'email' => $email], 404);
+    }
+
+    // מתחברים בפועל למשתמש הקיים
+    wp_set_current_user($user->ID);
+    wp_set_auth_cookie($user->ID, true);
+    sunideas_log_event('התחברות גוגל', $email, 'הצלחה');
+
+    $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
+    return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url], 200);
 }
 
 function sunideas_find_email_recursive($data) {
