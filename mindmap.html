@@ -1088,6 +1088,68 @@
     subExpiry: parseInt(urlParams.get('subexpiry') || '0', 10),
     logoutUrl: urlParams.get('logouturl') || ''
   };
+  const TRIAL = {
+    isTrial: urlParams.get('istrial') === '1',
+    expansionsUsed: parseInt(urlParams.get('trialexp') || '0', 10),
+    scriptsUsed: parseInt(urlParams.get('trialscr') || '0', 10)
+  };
+
+  // בודקים מול השרת (וורדפרס) אם הפעולה מותרת - זה הכרחי שהאכיפה תהיה בצד
+  // השרת ולא רק בצד הלקוח, אחרת ניקוי עוגיות/גלישה בסתר היו מאפסים את זה.
+  // action: 'expansion' | 'script' | 'bio' | 'product' | 'landing'
+  async function checkTrialLimit(action){
+    if(!HAS_ACCOUNT) return { allowed: true, paid: true }; // בדיקה עצמאית מחוץ לאתר - לא נועל
+    try{
+      const params = new URLSearchParams({ uid: AUTH.uid, exp: AUTH.exp, tok: AUTH.tok, action: action });
+      const res = await fetch(WP_API_BASE + '/check-trial-limit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString()
+      });
+      const data = await res.json();
+      return data;
+    }catch(err){
+      console.error('checkTrialLimit failed:', err);
+      return { allowed: false, paid: false, reason: 'network_error' };
+    }
+  }
+
+  const UPGRADE_COPY = {
+    expansion: {
+      he: { title: 'זהו לגבי הרחבות בניסיון החינם', body: 'במסלול החינמי אפשר להרחיב רעיונות פעם אחת. כדי להמשיך להרחיב בלי הגבלה - בחרו מסלול:' },
+      en: { title: "That's it for free expansions", body: 'The free trial includes one extra expansion. To keep expanding without limits - choose a plan:' }
+    },
+    script: {
+      he: { title: 'זהו לגבי תסריטי ריל בניסיון החינם', body: 'במסלול החינמי אפשר לכתוב תסריט ריל אחד. כדי לכתוב תסריטים בלי הגבלה - בחרו מסלול:' },
+      en: { title: "That's it for free reel scripts", body: 'The free trial includes one reel script. To write unlimited scripts - choose a plan:' }
+    },
+    paid_only: {
+      he: { title: 'הפיצ׳ר הזה זמין במסלול בתשלום', body: 'ביו ממיר, רעיון למוצר רווחי ודף נחיתה זמינים למנויים בתשלום בלבד. בחרו מסלול כדי להמשיך:' },
+      en: { title: 'This feature is part of the paid plan', body: 'Converting bios, product ideas, and landing pages are available to paying subscribers. Choose a plan to continue:' }
+    }
+  };
+
+  function showUpgradeModal(reason){
+    const eng = isEnglish();
+    const copy = (UPGRADE_COPY[reason] || UPGRADE_COPY.paid_only)[eng ? 'en' : 'he'];
+    const backdrop = document.createElement('div');
+    backdrop.id = 'upgrade-modal-backdrop';
+    backdrop.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(20,20,15,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#fff;border-radius:20px;max-width:420px;width:100%;padding:28px;font-family:Rubik,sans-serif;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.25);';
+    card.innerHTML = `
+      <div style="font-size:19px;font-weight:700;color:#3A2A1A;margin-bottom:10px;">${copy.title}</div>
+      <div style="font-size:14px;color:#8A7A66;margin-bottom:22px;line-height:1.5;">${copy.body}</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <a href="https://ideabooster.app/${eng ? 'en' : 'הרשמה'}/" target="_top" style="background:#1E6E4C;color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;font-size:14.5px;">${eng ? 'See plans' : 'לראות מסלולים'}</a>
+        <button type="button" id="upgrade-modal-close" style="background:none;border:none;color:#8A7A66;font-size:13px;cursor:pointer;text-decoration:underline;padding:6px;">${eng ? 'Not now' : 'לא עכשיו'}</button>
+      </div>
+    `;
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+    document.getElementById('upgrade-modal-close').addEventListener('click', ()=> backdrop.remove());
+    backdrop.addEventListener('click', (e)=>{ if(e.target === backdrop) backdrop.remove(); });
+  }
 
   const PALETTE = [
     {stroke:'#1E6E4C', tint:'#EAF6EF'},
@@ -1841,6 +1903,15 @@
     if(isManual === undefined) isManual = true;
     const node = state.nodes[nodeId];
     if(!node || node.loading) return;
+
+    if(isManual && TRIAL.isTrial){
+      const check = await checkTrialLimit('expansion');
+      if(!check.allowed){
+        showUpgradeModal('expansion');
+        return;
+      }
+    }
+
     node.loading = true;
     node.error = false;
     refreshViews();
@@ -2152,6 +2223,15 @@ Write one viral reel script in English about the specific topic, for a US audien
   async function generateScript(nodeId, styleKey){
     const node = state.nodes[nodeId];
     if(!node) return;
+
+    if(TRIAL.isTrial){
+      const check = await checkTrialLimit('script');
+      if(!check.allowed){
+        showUpgradeModal('script');
+        return;
+      }
+    }
+
     node.reelScript = { status: 'loading' };
     renderScriptPanel();
     refreshViews();
@@ -3115,6 +3195,13 @@ ${JSON.stringify({hook:rs.hook, body:rs.body, cta:rs.cta, shots:rs.shots||[], ca
 
   async function openBioPanel(){
     if(!state.rootId) return;
+    if(TRIAL.isTrial){
+      const check = await checkTrialLimit('bio');
+      if(!check.allowed){
+        showUpgradeModal('paid_only');
+        return;
+      }
+    }
     closeScriptPanel();
     closeProductPopup();
     ensureBioObject();
@@ -3469,6 +3556,13 @@ Write one converting bio in English, for a US audience, following all the guidel
   }
 
   async function openProductPopup(){
+    if(TRIAL.isTrial){
+      const check = await checkTrialLimit('product');
+      if(!check.allowed){
+        showUpgradeModal('paid_only');
+        return;
+      }
+    }
     closeScriptPanel();
     closeBioPanel();
     hideProductNudge();

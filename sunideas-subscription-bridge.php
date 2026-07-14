@@ -332,6 +332,16 @@ add_action('rest_api_init', function () {
         },
         'permission_callback' => '__return_true', // Client ID אינו סוד - מיועד להיות גלוי בקוד הצד-לקוח
     ]);
+    register_rest_route('sunideas/v1', '/start-trial', [
+        'methods' => 'POST',
+        'callback' => 'sunideas_handle_start_trial',
+        'permission_callback' => '__return_true',
+    ]);
+    register_rest_route('sunideas/v1', '/check-trial-limit', [
+        'methods' => 'POST',
+        'callback' => 'sunideas_handle_check_trial_limit',
+        'permission_callback' => '__return_true', // האימות קורה בתוך הפונקציה, לפי הטוקן החתום
+    ]);
 });
 
 // הכלי רץ מ-GitHub Pages (מקור אחר) - חייבים לאשר CORS על נקודות הקצה האלה
@@ -433,6 +443,113 @@ function sunideas_handle_google_login(WP_REST_Request $request) {
 
     $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
     return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url], 200);
+}
+
+/**
+ * הרשמה מינימלית לניסיון חינם - רק אימייל, סיסמה נוצרת אוטומטית ונשלחת במייל.
+ * לא עובר דרך Grow/תשלום בכלל. אם כבר קיים חשבון עם האימייל הזה (בין אם ניסיון
+ * ובין אם בתשלום) - לא יוצרים חשבון נוסף ולא "מאפסים" ניסיון שכבר נוצל.
+ */
+function sunideas_handle_start_trial(WP_REST_Request $request) {
+    $params = $request->get_json_params();
+    $email = sanitize_email($params['email'] ?? '');
+    if (empty($email) || !is_email($email)) {
+        return new WP_REST_Response(['error' => 'invalid_email'], 400);
+    }
+
+    $existing = get_user_by('email', $email);
+    if ($existing) {
+        // כבר יש חשבון (ניסיון קודם או משלם) - לא יוצרים חדש, פשוט מחברים אליו.
+        // חשוב: זה בדיוק המנגנון שמונע "לרענן ניסיון" בעזרת אימייל שכבר נוצל.
+        wp_set_current_user($existing->ID);
+        wp_set_auth_cookie($existing->ID, true);
+        $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
+        return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url, 'existing' => true], 200);
+    }
+
+    $username = sanitize_user(current(explode('@', $email)) . '_' . wp_rand(1000, 9999));
+    $random_password = wp_generate_password(14, true);
+    $user_id = wp_create_user($username, $random_password, $email);
+    if (is_wp_error($user_id)) {
+        sunideas_log_event('שגיאת יצירת ניסיון חינם', $email, $user_id->get_error_message());
+        return new WP_REST_Response(['error' => 'signup_failed'], 500);
+    }
+
+    // מסמנים כמשתמש ניסיון (לא מנוי משלם), עם מוני שימוש שמתחילים מאפס
+    update_user_meta($user_id, 'sunideas_subscription_active', '0');
+    update_user_meta($user_id, 'sunideas_is_trial', '1');
+    update_user_meta($user_id, 'sunideas_trial_expansions_used', '0');
+    update_user_meta($user_id, 'sunideas_trial_scripts_used', '0');
+
+    $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
+    $login_url = wp_login_url($tool_url);
+    $subject = 'הניסיון החינמי שלכם ב-Idea Booster מוכן';
+    $message = "שלום,\n\n"
+        . "פרטי הכניסה שלכם לניסיון החינמי:\n\n"
+        . "שם משתמש: {$username}\n"
+        . "סיסמה זמנית: {$random_password}\n\n"
+        . "כניסה כאן: {$login_url}\n\n"
+        . "בברכה,\nצוות Idea Booster";
+    wp_mail($email, $subject, $message);
+    sunideas_log_event('ניסיון חינם נוצר', $email, 'הצלחה');
+
+    wp_set_current_user($user_id);
+    wp_set_auth_cookie($user_id, true);
+    return new WP_REST_Response(['ok' => true, 'redirect' => $tool_url, 'existing' => false], 200);
+}
+
+/**
+ * בדיקה + ספירה של מגבלות הניסיון החינם - הלב של האכיפה. חייב לרוץ בצד השרת
+ * (לא רק להסתמך על מה שהכלי "מחליט" בצד הלקוח), אחרת ניקוי עוגיות/גלישה
+ * בסתר היו מאפסים את המונה. הכל נקשר לחשבון המשתמש (מזהה + אימייל) שמאומת
+ * בטוקן החתום - לא למצב הדפדפן המקומי.
+ *
+ * חוקי הניסיון החינם:
+ * - מנוי משלם פעיל (subscription_active=1, לא פג תוקף) -> תמיד מותר, בלי ספירה.
+ * - הרחבת "עוד רעיונות" (action=expansion): מותר פעם אחת נוספת בסך הכל (מעבר
+ *   למפה הראשונית עצמה, שלא עוברת דרך הבדיקה הזו כלל).
+ * - תסריט ריל (action=script): מותר פעם אחת בסך הכל.
+ * - כל פעולה אחרת (action=bio / product / landing) -> בתשלום בלבד, לעולם לא
+ *   מותר במסלול ניסיון, ללא קשר למונים.
+ */
+function sunideas_handle_check_trial_limit(WP_REST_Request $request) {
+    nocache_headers();
+    $uid = $request->get_param('uid');
+    $exp = $request->get_param('exp');
+    $tok = $request->get_param('tok');
+    $action = sanitize_text_field($request->get_param('action') ?? '');
+    if (!sunideas_verify_history_token($uid, $exp, $tok)) {
+        return new WP_REST_Response(['error' => 'unauthorized'], 401);
+    }
+
+    $user_id = (int) $uid;
+    $active = get_user_meta($user_id, 'sunideas_subscription_active', true);
+    $expiry = (int) get_user_meta($user_id, 'sunideas_subscription_expiry', true);
+    $is_paid = ($active === '1' && $expiry > time());
+    if ($is_paid) {
+        return new WP_REST_Response(['allowed' => true, 'paid' => true], 200);
+    }
+
+    if ($action === 'expansion') {
+        $used = (int) get_user_meta($user_id, 'sunideas_trial_expansions_used', true);
+        if ($used >= 1) {
+            return new WP_REST_Response(['allowed' => false, 'paid' => false, 'reason' => 'trial_limit_reached'], 200);
+        }
+        update_user_meta($user_id, 'sunideas_trial_expansions_used', (string) ($used + 1));
+        return new WP_REST_Response(['allowed' => true, 'paid' => false], 200);
+    }
+
+    if ($action === 'script') {
+        $used = (int) get_user_meta($user_id, 'sunideas_trial_scripts_used', true);
+        if ($used >= 1) {
+            return new WP_REST_Response(['allowed' => false, 'paid' => false, 'reason' => 'trial_limit_reached'], 200);
+        }
+        update_user_meta($user_id, 'sunideas_trial_scripts_used', (string) ($used + 1));
+        return new WP_REST_Response(['allowed' => true, 'paid' => false], 200);
+    }
+
+    // כל פעולה אחרת (ביו/מוצר/דף נחיתה) - בתשלום בלבד, לא חלק מהניסיון בכלל
+    return new WP_REST_Response(['allowed' => false, 'paid' => false, 'reason' => 'paid_only'], 200);
 }
 
 function sunideas_find_email_recursive($data) {
@@ -802,7 +919,8 @@ add_action('template_redirect', function () {
         $active = get_user_meta($uid, 'sunideas_subscription_active', true);
         $expiry = (int) get_user_meta($uid, 'sunideas_subscription_expiry', true);
         $expired = $expiry > 0 && $expiry < time();
-        if ($active !== '1' || $expired) {
+        $is_trial_user = get_user_meta($uid, 'sunideas_is_trial', true) === '1';
+        if (($active !== '1' || $expired) && !$is_trial_user) {
             if ($expired && $active === '1') {
                 update_user_meta($uid, 'sunideas_subscription_active', '0'); // מנקים בו-במקום, לא מחכים ליום הבא
             }
@@ -819,6 +937,9 @@ add_action('template_redirect', function () {
     $current_user = wp_get_current_user();
     $sub_active = get_user_meta($current_user->ID, 'sunideas_subscription_active', true);
     $sub_expiry = (int) get_user_meta($current_user->ID, 'sunideas_subscription_expiry', true);
+    $is_trial = get_user_meta($current_user->ID, 'sunideas_is_trial', true) === '1';
+    $trial_expansions_used = (int) get_user_meta($current_user->ID, 'sunideas_trial_expansions_used', true);
+    $trial_scripts_used = (int) get_user_meta($current_user->ID, 'sunideas_trial_scripts_used', true);
     $detected_lang = (isset($_COOKIE['sunideas_lang']) && $_COOKIE['sunideas_lang'] === 'en') ? 'en' : 'he';
     $sep = (strpos($tool_iframe_url, '?') === false) ? '?' : '&';
     $tool_iframe_url .= $sep . 'uid=' . $token['uid'] . '&exp=' . $token['exp'] . '&tok=' . urlencode($token['tok'])
@@ -826,6 +947,9 @@ add_action('template_redirect', function () {
         . '&uemail=' . urlencode($current_user->user_email)
         . '&subactive=' . ($sub_active === '1' ? '1' : '0')
         . '&subexpiry=' . $sub_expiry
+        . '&istrial=' . ($is_trial ? '1' : '0')
+        . '&trialexp=' . $trial_expansions_used
+        . '&trialscr=' . $trial_scripts_used
         . '&lang=' . $detected_lang
         . '&logouturl=' . urlencode(add_query_arg('sunideas_logout', '1', home_url()));
     sunideas_render_fullbleed_page($tool_iframe_url, true);
