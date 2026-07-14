@@ -145,7 +145,7 @@
   #topic-input:focus{border-color:#1E6E4C;}
 
   /* ---------- VIEWPORT (map) ---------- */
-  #viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;display:none;}
+  #viewport{position:absolute;inset:0;overflow:hidden;cursor:grab;display:none;touch-action:none;}
   #viewport.grabbing{cursor:grabbing;}
   #world{
     position:absolute;top:0;left:0;
@@ -173,6 +173,7 @@
     font-size:13.5px;line-height:1.32;font-weight:600;
     color:var(--ink);
     user-select:none;
+    touch-action:none;
     cursor:grab;touch-action:none;
     transition:left .55s cubic-bezier(.2,.7,.3,1), top .55s cubic-bezier(.2,.7,.3,1), opacity .3s ease;
     z-index:2;
@@ -4500,25 +4501,83 @@ Write full landing page content in English, for a US audience, following all the
     if(e.key === 'Enter'){ e.preventDefault(); startMapping(); }
   });
 
-  // ---------- Pan & Zoom ----------
+  // ---------- Pan & Zoom (עכבר + מגע, כולל צביטה בשתי אצבעות לזום) ----------
+  const activePointers = new Map(); // pointerId -> {x, y}
   let dragging = false, dragStart = {x:0,y:0}, panStart = {x:0,y:0};
+  let pinchStartDist = 0, pinchStartScale = 1, pinchStartMid = {x:0,y:0}, pinchStartPan = {x:0,y:0};
+
+  function pointersArray(){ return Array.from(activePointers.values()); }
+  function dist(a, b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  function midpoint(a, b){ return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 }; }
+
   viewport.addEventListener('pointerdown', (e)=>{
     const nonRootNode = e.target.closest('.node') && !e.target.closest('.node.root');
     if(nonRootNode || e.target.closest('.node-actions') || e.target.closest('#controls')) return;
-    dragging = true;
-    viewport.classList.add('grabbing');
-    dragStart = {x:e.clientX, y:e.clientY};
-    panStart = {x:state.panX, y:state.panY};
+    activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
     viewport.setPointerCapture(e.pointerId);
+
+    if(activePointers.size === 1){
+      dragging = true;
+      viewport.classList.add('grabbing');
+      dragStart = {x:e.clientX, y:e.clientY};
+      panStart = {x:state.panX, y:state.panY};
+    } else if(activePointers.size === 2){
+      // מעבר ממצב גרירה באצבע אחת למצב צביטה בשתיים
+      dragging = false;
+      viewport.classList.remove('grabbing');
+      const [p1, p2] = pointersArray();
+      pinchStartDist = dist(p1, p2);
+      pinchStartScale = state.scale;
+      pinchStartMid = midpoint(p1, p2);
+      pinchStartPan = {x:state.panX, y:state.panY};
+    }
   });
   viewport.addEventListener('pointermove', (e)=>{
+    if(!activePointers.has(e.pointerId)) return;
+    activePointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+
+    if(activePointers.size >= 2){
+      const [p1, p2] = pointersArray();
+      const newDist = dist(p1, p2);
+      if(pinchStartDist > 0){
+        const rawScale = pinchStartScale * (newDist / pinchStartDist);
+        const newScale = Math.min(2.2, Math.max(0.25, rawScale));
+        const mid = midpoint(p1, p2);
+        const rect = viewport.getBoundingClientRect();
+        const mx = pinchStartMid.x - rect.left, my = pinchStartMid.y - rect.top;
+        const worldX = (mx - pinchStartPan.x) / pinchStartScale;
+        const worldY = (my - pinchStartPan.y) / pinchStartScale;
+        // גם מאפשרים הזזה תוך כדי צביטה (בדיוק כמו במפות/גלריות סטנדרטיות),
+        // לפי כמה שנקודת האמצע בין האצבעות עצמה זזה מאז תחילת המחווה.
+        const shiftX = mid.x - pinchStartMid.x, shiftY = mid.y - pinchStartMid.y;
+        state.panX = mx - worldX*newScale + shiftX;
+        state.panY = my - worldY*newScale + shiftY;
+        state.scale = newScale;
+        applyTransform();
+      }
+      return;
+    }
+
     if(!dragging) return;
     state.panX = panStart.x + (e.clientX - dragStart.x);
     state.panY = panStart.y + (e.clientY - dragStart.y);
     applyTransform();
   });
-  ['pointerup','pointercancel'].forEach(ev=>{
-    viewport.addEventListener(ev, ()=>{ dragging=false; viewport.classList.remove('grabbing'); });
+  function releasePointer(e){
+    activePointers.delete(e.pointerId);
+    if(activePointers.size === 0){
+      dragging = false;
+      viewport.classList.remove('grabbing');
+    } else if(activePointers.size === 1){
+      // נשארה אצבע אחת - חוזרים חלק למצב גרירה רגילה מהמצב הנוכחי, בלי קפיצה
+      dragging = true;
+      const [p] = pointersArray();
+      dragStart = {x:p.x, y:p.y};
+      panStart = {x:state.panX, y:state.panY};
+    }
+  }
+  ['pointerup','pointercancel','pointerleave'].forEach(ev=>{
+    viewport.addEventListener(ev, releasePointer);
   });
   viewport.addEventListener('wheel', (e)=>{
     if(!state.rootId) return;
