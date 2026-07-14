@@ -147,6 +147,10 @@
     #profile-menu-name{padding-top:16px;}
     #profile-menu a{padding-top:12px;padding-bottom:12px;font-size:14.5px;}
 
+    /* מסך ריח ראשוני: הכפתור הירוק יורד מתחת לתיבת החיפוש, לא דחוק לצידה */
+    #topic-form{flex-direction:column;align-items:stretch;}
+    #topic-form #start-btn{width:100%;}
+
     /* פאנלים (תסריט/ביו): שלושה כפתורי footer לא נכנסים בשורה אחת במסך צר */
     .script-panel-footer{flex-wrap:wrap;}
     .script-panel-footer .btn, .script-panel-footer .script-regen-wrap{flex:1 1 100%;}
@@ -4685,6 +4689,7 @@ Write full landing page content in English, for a US audience, following all the
   // ---------- Init ----------
   // ---------- Language toggle ----------
   function applyLanguage(){
+    try{
     const eng = isEnglish();
     document.documentElement.setAttribute('dir', eng ? 'ltr' : 'rtl');
     document.documentElement.setAttribute('lang', eng ? 'en' : 'he');
@@ -4737,6 +4742,9 @@ Write full landing page content in English, for a US audience, following all the
     updateChrome();
     refreshViews();
     renderTabs();
+    }catch(err){
+      console.error('applyLanguage failed (non-fatal, UI may be partially untranslated):', err);
+    }
   }
   document.getElementById('lang-toggle-btn').addEventListener('click', ()=>{
     LANG = isEnglish() ? 'he' : 'en';
@@ -4766,7 +4774,10 @@ Write full landing page content in English, for a US audience, following all the
   mobileDrawerBackdrop.addEventListener('click', closeMobileDrawer);
   // הכפתורים המשוכפלים בתוך המגירה עושים בדיוק את אותה פעולה כמו המקור בדסקטופ
   mobileViewToggle.addEventListener('click', ()=>{ toggleViewMode(); });
-  mobileLangToggleBtn.addEventListener('click', ()=>{ document.getElementById('lang-toggle-btn').click(); });
+  mobileLangToggleBtn.addEventListener('click', ()=>{
+    closeMobileDrawer();
+    document.getElementById('lang-toggle-btn').click();
+  });
 
   if(HAS_ACCOUNT && PROFILE.email){
     profileBtn.style.display = 'flex';
