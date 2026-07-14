@@ -4881,6 +4881,8 @@ Write full landing page content in English, for a US audience, following all the
     if(PROFILE.subActive){
       const expiryStr = PROFILE.subExpiry ? new Date(PROFILE.subExpiry * 1000).toLocaleDateString(isEnglish() ? 'en-US' : 'he-IL') : '';
       planEl.textContent = (isEnglish() ? '✅ Active subscription' : '✅ מנוי פעיל') + (expiryStr ? ((isEnglish() ? ' until ' : ' עד ') + expiryStr) : '');
+    } else if(TRIAL.isTrial){
+      planEl.textContent = isEnglish() ? '🎁 Free trial' : '🎁 בניסיון חינם';
     } else {
       planEl.textContent = isEnglish() ? '⚠️ No active subscription right now' : '⚠️ אין מנוי פעיל כרגע';
     }
