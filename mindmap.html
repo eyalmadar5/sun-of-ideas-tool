@@ -2986,31 +2986,108 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     recorder.ondataavailable = (e)=>{ if(e.data.size > 0) chunks.push(e.data); };
     const donePromise = new Promise(resolve=>{ recorder.onstop = ()=> resolve(new Blob(chunks, {type:'video/webm'})); });
 
-    function findWordAt(t){
-      const w = words.find(w => t >= w.startSec && t <= w.endSec);
-      return w ? w.text : '';
+    // מקבצים מילים לקבוצות של 2-3 (במקום מילה בודדת), עם תזמון משולב מתחילת
+    // המילה הראשונה בקבוצה ועד סוף האחרונה - קרוב יותר לאיך שכתוביות אמיתיות
+    // מוצגות (כמה מילים קצרות ביחד), בלי לאבד את הסנכרון לקצב הדיבור.
+    const wordGroups = [];
+    for(let i = 0; i < words.length; i += 3){
+      const chunk = words.slice(i, i + 3);
+      if(chunk.length === 0) continue;
+      wordGroups.push({
+        text: chunk.map(w => w.text).join(' '),
+        startSec: chunk[0].startSec,
+        endSec: chunk[chunk.length - 1].endSec
+      });
+    }
+
+    function findGroupAt(t){
+      const g = wordGroups.find(g => t >= g.startSec && t <= g.endSec);
+      return g ? g.text : '';
     }
     function drawLoop(){
       if(sourceVideo.paused || sourceVideo.ended) return;
       ctx.drawImage(sourceVideo, 0, 0, canvas.width, canvas.height);
-      const word = findWordAt(sourceVideo.currentTime);
-      if(word){
-        // מילה אחת בכל פעם (בסגנון טיקטוק/כתוביות קריוקי), פונט בולט יותר,
-        // וממוקם גבוה יותר במסך (כשליש מלמעלה, לא צמוד לתחתית כמו קודם).
-        const fontSize = Math.round(canvas.width * 0.075);
+      const caption = findGroupAt(sourceVideo.currentTime);
+      if(caption){
+        // 2-3 מילים בכל פעם (לא מילה בודדת), פונט בולט, ממוקם בשליש התחתון
+        // של המסך - לא צמוד ממש לתחתית, ולא באמצע/למעלה.
+        const fontSize = Math.round(canvas.width * 0.065);
         ctx.font = '800 ' + fontSize + 'px Rubik, Arial, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        const boxY = canvas.height * 0.32;
-        const textWidth = ctx.measureText(word).width;
+        const lines = tpWrapText(ctx, caption, canvas.width * 0.86);
+        const lineHeight = fontSize * 1.3;
+        const boxHeight = lines.length * lineHeight + fontSize * 0.7;
+        const boxY = canvas.height * 0.78 - boxHeight/2;
+        const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
         const paddingX = fontSize * 0.55;
-        const boxWidth = Math.min(canvas.width * 0.92, textWidth + paddingX * 2);
-        const boxHeight = fontSize * 1.55;
+        const boxWidth = Math.min(canvas.width * 0.92, maxLineWidth + paddingX * 2);
         ctx.fillStyle = 'rgba(0,0,0,0.62)';
-        ctx.fillRect((canvas.width - boxWidth)/2, boxY - boxHeight/2, boxWidth, boxHeight);
+        ctx.fillRect((canvas.width - boxWidth)/2, boxY, boxWidth, boxHeight);
         ctx.fillStyle = '#fff';
-        ctx.fillText(word, canvas.width/2, boxY);
+        lines.forEach((line, i)=> ctx.fillText(line, canvas.width/2, boxY + fontSize*0.35 + i*lineHeight + lineHeight/2));
       }
+      requestAnimationFrame(drawLoop);
+    }
+
+    recorder.start();
+    sourceVideo.onended = ()=>{ if(recorder.state !== 'inactive') recorder.stop(); };
+    await sourceVideo.play();
+    drawLoop();
+
+    const outputBlob = await donePromise;
+    URL.revokeObjectURL(sourceVideo.src);
+    return outputBlob;
+  }
+
+  // --- תיקון כיוון כתהליך נפרד אחרי ההקלטה (לא בזמן אמת) ---
+  // אחרי נסיונות חוזרים, מסתמן שלצייר על קנבס עם סיבוב תוך כדי captureStream
+  // *חי* מהמצלמה סובל מבאג לא-עקבי בדפדפן/מכשיר הזה. לעומת זאת, עיבוד לאחור
+  // (וידאו מוקלט → קנבס → הקלטה מחדש) הוא בדיוק אותו מנגנון שכבר עובד באמינות
+  // לצריבת כתוביות - אז מיישמים את הסיבוב באותו שלב עיבוד לאחור, לא בזמן חי.
+  async function tpReorientRecording(videoBlob, rawW, rawH, rotationDeg, mirror){
+    if(rotationDeg === 0 && !mirror) return videoBlob; // אין מה לתקן
+
+    const sourceVideo = document.createElement('video');
+    sourceVideo.src = URL.createObjectURL(videoBlob);
+    sourceVideo.muted = true;
+    sourceVideo.playsInline = true;
+
+    await new Promise((resolve, reject)=>{
+      sourceVideo.onloadedmetadata = resolve;
+      sourceVideo.onerror = ()=> reject(new Error(isEnglish() ? 'Loading the recording for orientation fix failed' : 'טעינת ההקלטה לתיקון כיוון נכשלה'));
+    });
+
+    const dims = tpCanvasDimsForRotation(rawW, rawH, rotationDeg);
+    const canvas = document.createElement('canvas');
+    canvas.width = dims.w;
+    canvas.height = dims.h;
+    const ctx = canvas.getContext('2d');
+
+    const sourceStream = sourceVideo.captureStream ? sourceVideo.captureStream() : sourceVideo.mozCaptureStream();
+    const audioTrack = sourceStream.getAudioTracks()[0];
+    const canvasStream = canvas.captureStream(30);
+    if(audioTrack) canvasStream.addTrack(audioTrack);
+
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+    const recorder = new MediaRecorder(canvasStream, { mimeType });
+    const chunks = [];
+    recorder.ondataavailable = (e)=>{ if(e.data.size > 0) chunks.push(e.data); };
+    const donePromise = new Promise(resolve=>{ recorder.onstop = ()=> resolve(new Blob(chunks, {type:'video/webm'})); });
+
+    function drawLoop(){
+      if(sourceVideo.paused || sourceVideo.ended) return;
+      ctx.save();
+      ctx.translate(canvas.width/2, canvas.height/2);
+      ctx.rotate(rotationDeg * Math.PI / 180);
+      if(mirror) ctx.scale(-1, 1);
+      const rotated90 = (rotationDeg === 90 || rotationDeg === 270);
+      const targetW = rotated90 ? canvas.height : canvas.width;
+      const targetH = rotated90 ? canvas.width : canvas.height;
+      const scale = Math.max(targetW / rawW, targetH / rawH);
+      const drawW = rawW * scale, drawH = rawH * scale;
+      ctx.drawImage(sourceVideo, -drawW/2, -drawH/2, drawW, drawH);
+      ctx.restore();
       requestAnimationFrame(drawLoop);
     }
 
@@ -3032,44 +3109,41 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     const capStatusEl = document.getElementById('tp-caption-status');
     capStatusEl.style.display = 'none'; // יוצג רק אחרי העצירה, כשמתחילים לתמלל בפועל
 
-    // --- הקלטה: מציירים כל פריים על קנבס באמצעות בדיוק אותו סיבוב שהמשתמש
-    //     אישר ויזואלית בתצוגה הקטנה - אין כאן שום ניחוש, זה בדיוק מה שהוא ראה. ---
-    if(tpPreviewRafId) cancelAnimationFrame(tpPreviewRafId); // עוצרים את תצוגת האישור הקטנה, ההקלטה מציירת בעצמה עכשיו
+    // --- הקלטה: מקליטים את זרם המצלמה הגולמי ישירות, בלי שום קנבס בזמן
+    //     אמת. הסיבוב/היפוך מיושמים כתהליך עיבוד נפרד אחרי שההקלטה נעצרת
+    //     (ראו tpReorientRecording) - זה עוקף באג לא-עקבי שהיה בין הסיבוב
+    //     החי לתצוגה המקדימה הקטנה לבין מה שבאמת נשמר בקובץ הסופי. ---
+    if(tpPreviewRafId) cancelAnimationFrame(tpPreviewRafId); // עוצרים את תצוגת האישור הקטנה
     const rawW = tpCameraVideo.videoWidth || 720;
     const rawH = tpCameraVideo.videoHeight || 1280;
-    const dims = tpCanvasDimsForRotation(rawW, rawH, tpRotationDeg);
-    const canvas = document.createElement('canvas');
-    canvas.width = dims.w;
-    canvas.height = dims.h;
-    const ctx = canvas.getContext('2d');
-
-    function drawFrame(){
-      if(!tpRecording) return;
-      tpDrawRotatedFramePixels(ctx, canvas.width, canvas.height, rawW, rawH, tpRotationDeg, tpCameraMirror);
-      requestAnimationFrame(drawFrame);
-    }
-    drawFrame();
-
-    const canvasStream = canvas.captureStream(30);
-    const audioTrack = tpCameraStream.getAudioTracks()[0];
-    if(audioTrack) canvasStream.addTrack(audioTrack);
+    const recordRotationDeg = tpRotationDeg;
+    const recordMirror = tpCameraMirror;
 
     tpRecordedChunks = [];
     const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    tpMediaRecorder = new MediaRecorder(canvasStream, { mimeType });
+    tpMediaRecorder = new MediaRecorder(tpCameraStream, { mimeType });
     tpMediaRecorder.ondataavailable = (e)=>{ if(e.data.size > 0) tpRecordedChunks.push(e.data); };
     tpMediaRecorder.onstop = async ()=>{
       tpRecording = false;
-      const rawBlob = new Blob(tpRecordedChunks, { type: 'video/webm' });
+      const capturedBlob = new Blob(tpRecordedChunks, { type: 'video/webm' });
+      if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
+
+      capStatusEl.style.display = 'inline';
+      capStatusEl.textContent = isEnglish() ? '\u21bb Fixing orientation...' : '\u21bb מתקן כיוון...';
+      let rawBlob;
+      try{
+        rawBlob = await tpReorientRecording(capturedBlob, rawW, rawH, recordRotationDeg, recordMirror);
+      }catch(err){
+        console.error('Orientation fix failed, using raw capture as-is:', err);
+        rawBlob = capturedBlob;
+      }
       tpLastRawBlob = rawBlob; // שומרים כדי לאפשר עריכת כתוביות חוזרת בלי צילום מחדש
       document.getElementById('tp-reedit-captions').style.display = 'none'; // מוסתר עד שיהיו כתוביות אמיתיות לערוך
-      if(tpCameraStream){ tpPreviewTick(); } // חוזרים לתצוגת האישור הקטנה, מוכנים להקלטה הבאה
 
       // --- כתוביות אמיתיות: שולחים את ההקלטה עצמה לתמלול אחרי שההקלטה
       //     הסתיימה (לא בזמן אמת) - זה הרבה יותר אמין מזיהוי דיבור חי
       //     בתוך iframe, שלא תמיד עובד בכלל. אז צורבים אותן לתוך קובץ
       //     אחד סופי, מוכן לפרסום. ---
-      capStatusEl.style.display = 'inline';
       capStatusEl.textContent = isEnglish() ? '💬 Transcribing the recording...' : '💬 מתמלל את ההקלטה...';
       try{
         const form = new FormData();
