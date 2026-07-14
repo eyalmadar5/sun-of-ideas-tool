@@ -541,7 +541,7 @@ function sunideas_verify_history_token($user_id, $exp, $token) {
     return hash_equals($expected, (string) $token);
 }
 
-function sunideas_render_fullbleed_page($iframe_url){
+function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false){
     $qs = $_SERVER['QUERY_STRING'] ?? '';
     if(!empty($qs)){
         $iframe_url .= (strpos($iframe_url, '?') === false ? '?' : '&') . $qs;
@@ -552,13 +552,121 @@ function sunideas_render_fullbleed_page($iframe_url){
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Idea Booster - שמש הרעיונות</title>
+<?php if ($is_tool_page): ?>
+<link rel="manifest" href="https://eyalmadar5.github.io/sun-of-ideas-tool/manifest.json">
+<link rel="apple-touch-icon" href="https://eyalmadar5.github.io/sun-of-ideas-tool/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Idea Booster">
+<meta name="theme-color" content="#C9622A">
+<?php endif; ?>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#F6F1E4; }
   iframe { position:fixed; inset:0; width:100vw; height:100dvh; border:none; display:block; }
+  <?php if ($is_tool_page): ?>
+  #sunideas-install-banner{
+    position:fixed; right:16px; left:16px; bottom:16px; z-index:99999;
+    background:#fff; border:1.5px solid #E4DBC4; border-radius:16px;
+    box-shadow:0 12px 32px rgba(36,38,31,0.22);
+    padding:16px; display:none; align-items:center; gap:12px;
+    font-family:-apple-system,'Heebo',sans-serif; direction:rtl;
+  }
+  #sunideas-install-banner.open{ display:flex; }
+  #sunideas-install-banner img{ width:48px; height:48px; border-radius:12px; flex:0 0 auto; }
+  #sunideas-install-text{ flex:1 1 auto; min-width:0; }
+  #sunideas-install-text b{ display:block; font-size:14.5px; color:#3A2A1A; margin-bottom:2px; }
+  #sunideas-install-text span{ display:block; font-size:12.5px; color:#8A7A66; }
+  #sunideas-install-actions{ display:flex; flex-direction:column; gap:6px; flex:0 0 auto; }
+  #sunideas-install-btn{
+    background:#C9622A; color:#fff; border:none; border-radius:10px;
+    padding:9px 14px; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap;
+  }
+  #sunideas-install-dismiss{
+    background:none; border:none; color:#8A7A66; font-size:11.5px; cursor:pointer; text-decoration:underline;
+  }
+  #sunideas-install-checkbox-row{
+    display:flex; align-items:center; gap:5px; font-size:11px; color:#8A7A66; margin-top:6px;
+  }
+  <?php endif; ?>
 </style>
 </head>
 <body>
   <iframe src="<?php echo esc_url($iframe_url); ?>" allow="clipboard-write; camera; microphone" allowfullscreen></iframe>
+  <?php if ($is_tool_page): $banner_lang = (isset($_COOKIE['sunideas_lang']) && $_COOKIE['sunideas_lang'] === 'en') ? 'en' : 'he'; ?>
+  <div id="sunideas-install-banner" dir="<?php echo $banner_lang === 'en' ? 'ltr' : 'rtl'; ?>">
+    <img src="https://eyalmadar5.github.io/sun-of-ideas-tool/icon-192.png" alt="Idea Booster">
+    <div id="sunideas-install-text">
+      <b id="sunideas-install-title"><?php echo $banner_lang === 'en' ? 'Install the tool on your home screen' : 'התקינו את הכלי על מסך הבית'; ?></b>
+      <span id="sunideas-install-sub"><?php echo $banner_lang === 'en' ? 'Quick access, like an app - no address bar' : 'גישה מהירה, כמו אפליקציה - בלי שורת כתובת'; ?></span>
+      <label id="sunideas-install-checkbox-row">
+        <input type="checkbox" id="sunideas-install-never">
+        <span><?php echo $banner_lang === 'en' ? "Don't offer this again" : 'לא להציע לי שוב'; ?></span>
+      </label>
+    </div>
+    <div id="sunideas-install-actions">
+      <button type="button" id="sunideas-install-btn"><?php echo $banner_lang === 'en' ? 'Install' : 'התקנה'; ?></button>
+      <button type="button" id="sunideas-install-dismiss"><?php echo $banner_lang === 'en' ? 'Maybe later' : 'אולי מאוחר יותר'; ?></button>
+    </div>
+  </div>
+  <script>
+  (function(){
+    var LS_KEY = 'sunideas_install_dismissed';
+    var BANNER_LANG = '<?php echo $banner_lang; ?>';
+    var isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    var alreadyDismissed = false;
+    try{ alreadyDismissed = localStorage.getItem(LS_KEY) === '1'; }catch(e){}
+    if(!isMobile || isStandalone || alreadyDismissed) return;
+
+    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var banner = document.getElementById('sunideas-install-banner');
+    var neverBox = document.getElementById('sunideas-install-never');
+    var installBtn = document.getElementById('sunideas-install-btn');
+    var dismissBtn = document.getElementById('sunideas-install-dismiss');
+
+    function maybeRemember(){
+      if(neverBox.checked){
+        try{ localStorage.setItem(LS_KEY, '1'); }catch(e){}
+      }
+    }
+    dismissBtn.addEventListener('click', function(){
+      maybeRemember();
+      banner.classList.remove('open');
+    });
+
+    var deferredPrompt = null;
+    if(isIOS){
+      // אין דרך תכנותית להפעיל את זה ב-iOS - מציגים הוראה במקום כפתור פעיל
+      document.getElementById('sunideas-install-sub').textContent = BANNER_LANG === 'en'
+        ? 'Tap the Share button \u2b06\ufe0f then "Add to Home Screen"'
+        : 'הקישו על כפתור השיתוף ⬆️ ואז "הוספה למסך הבית"';
+      installBtn.textContent = BANNER_LANG === 'en' ? 'Got it' : 'הבנתי';
+      installBtn.addEventListener('click', function(){
+        maybeRemember();
+        banner.classList.remove('open');
+      });
+      setTimeout(function(){ banner.classList.add('open'); }, 1500);
+    } else {
+      window.addEventListener('beforeinstallprompt', function(e){
+        e.preventDefault();
+        deferredPrompt = e;
+        setTimeout(function(){ banner.classList.add('open'); }, 1500);
+      });
+      installBtn.addEventListener('click', function(){
+        if(!deferredPrompt) return;
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.finally(function(){
+          banner.classList.remove('open');
+        });
+      });
+      window.addEventListener('appinstalled', function(){
+        try{ localStorage.setItem(LS_KEY, '1'); }catch(e){} // הותקן בפועל - לא נציע שוב לעולם
+        banner.classList.remove('open');
+      });
+    }
+  })();
+  </script>
+  <?php endif; ?>
 </body>
 </html>
 <?php
@@ -647,7 +755,7 @@ add_action('template_redirect', function () {
         . '&subexpiry=' . $sub_expiry
         . '&lang=' . $detected_lang
         . '&logouturl=' . urlencode(add_query_arg('sunideas_logout', '1', home_url()));
-    sunideas_render_fullbleed_page($tool_iframe_url);
+    sunideas_render_fullbleed_page($tool_iframe_url, true);
 });
 
 // ============================================================
