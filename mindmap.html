@@ -1161,7 +1161,7 @@
       <div style="font-size:19px;font-weight:700;color:#3A2A1A;margin-bottom:10px;">${copy.title}</div>
       <div style="font-size:14px;color:#8A7A66;margin-bottom:22px;line-height:1.5;">${copy.body}</div>
       <div style="display:flex;flex-direction:column;gap:10px;">
-        <a href="https://ideabooster.app/${eng ? 'en' : 'הרשמה'}/" target="_top" style="background:#1E6E4C;color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;font-size:14.5px;">${eng ? 'See plans' : 'לראות מסלולים'}</a>
+        <a href="https://pay.grow.link/OTU1Ng~7c1bb94f744a90f15a2dd64cf63bf44c-MzY2NDQ1MQ" target="_top" style="background:#1E6E4C;color:#fff;text-decoration:none;padding:14px;border-radius:12px;font-weight:700;font-size:14.5px;">${eng ? 'Start monthly plan \u2014 no commitment' : 'התחלת מסלול חודשי - בלי התחייבות'}</a>
         <button type="button" id="upgrade-modal-close" style="background:none;border:none;color:#8A7A66;font-size:13px;cursor:pointer;text-decoration:underline;padding:6px;">${eng ? 'Not now' : 'לא עכשיו'}</button>
       </div>
     `;
@@ -3008,12 +3008,6 @@ Reply ONLY with a flat (non-nested) JSON object, where each key is exactly the s
     canvas.width = dims.w;
     canvas.height = dims.h;
     const ctx = canvas.getContext('2d');
-
-    // 🔧 אבחון זמני
-    const _angleDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.angle : 'אין screen.orientation';
-    const _typeDebug = (window.screen && window.screen.orientation) ? window.screen.orientation.type : '-';
-    tpShowErrorBox('Debug: rawW=' + rawW + ' rawH=' + rawH + ' | angle=' + _angleDebug + ' type=' + _typeDebug + ' | rotation=' + tpRotationDeg + '\u00b0 | canvas=' + canvas.width + 'x' + canvas.height);
-
 
     function drawFrame(){
       if(!tpRecording) return;

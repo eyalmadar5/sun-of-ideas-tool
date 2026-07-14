@@ -205,11 +205,15 @@ document.addEventListener('DOMContentLoaded', async function() {
   function init(){
     try{
       var body = document.body;
-      if(!body || document.getElementById('sunideas-trial-banner')) return;
+      if(!body || document.getElementById('sunideas-trial-backdrop')) return;
 
-      var banner = document.createElement('div');
-      banner.id = 'sunideas-trial-banner';
-      banner.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;width:min(92vw,440px);padding:20px;background:#fff;border:1.5px solid #E4DBC4;border-radius:20px;box-shadow:0 10px 30px rgba(36,38,31,0.18);font-family:Rubik,sans-serif;direction:rtl;text-align:center;';
+      var backdrop = document.createElement('div');
+      backdrop.id = 'sunideas-trial-backdrop';
+      backdrop.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(20,20,15,0.5);display:flex;align-items:center;justify-content:center;padding:20px;';
+
+      var card = document.createElement('div');
+      card.id = 'sunideas-trial-banner';
+      card.style.cssText = 'position:relative;width:min(92vw,440px);padding:28px;background:#fff;border-radius:20px;box-shadow:0 20px 50px rgba(0,0,0,0.25);font-family:Rubik,sans-serif;direction:rtl;text-align:center;';
 
       var urlParams = new URLSearchParams(window.location.search);
       var trialError = urlParams.get('trial_error');
@@ -217,23 +221,26 @@ document.addEventListener('DOMContentLoaded', async function() {
       if(trialError === 'signup_failed') errMsg = 'משהו השתבש ביצירת החשבון, נסו שוב.';
       else if(trialError === 'invalid_email') errMsg = 'נא להזין אימייל תקין.';
 
-      banner.innerHTML =
-        '<button id="sunideas-trial-close" type="button" aria-label="סגירה" style="position:absolute;top:10px;left:12px;background:none;border:none;font-size:16px;color:#B5A48E;cursor:pointer;">\u2715</button>' +
-        '<div style="font-size:16px;font-weight:700;color:#3A2A1A;margin-bottom:6px;">רוצים לנסות לפני שמחליטים?</div>' +
-        '<div style="font-size:13px;color:#8A7A66;margin-bottom:14px;">מפת רעיונות ראשונית, הרחבה נוספת אחת, ותסריט ריל אחד מלא - חינם, בלי כרטיס אשראי</div>' +
+      card.innerHTML =
+        '<button id="sunideas-trial-close" type="button" aria-label="סגירה" style="position:absolute;top:12px;left:14px;background:none;border:none;font-size:18px;color:#B5A48E;cursor:pointer;">\u2715</button>' +
+        '<div style="font-size:18px;font-weight:700;color:#3A2A1A;margin-bottom:8px;">רוצים לנסות לפני שמחליטים?</div>' +
+        '<div style="font-size:13.5px;color:#8A7A66;margin-bottom:18px;line-height:1.5;">מפת רעיונות ראשונית, הרחבה נוספת אחת, ותסריט ריל אחד מלא - חינם, בלי כרטיס אשראי</div>' +
         (errMsg ? '<div style="font-size:13px;color:#B3261E;margin-bottom:10px;">' + errMsg + '</div>' : '') +
-        '<form id="sunideas-trial-form" action="https://ideabooster.app/wp-admin/admin-post.php" method="POST" target="_top" style="display:flex;gap:8px;">' +
+        '<form id="sunideas-trial-form" action="https://ideabooster.app/wp-admin/admin-post.php" method="POST" target="_top" style="display:flex;flex-direction:column;gap:10px;">' +
           '<input type="hidden" name="action" value="sunideas_start_trial">' +
-          '<input id="sunideas-trial-email" name="email" type="email" required placeholder="האימייל שלכם" style="flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14px;">' +
-          '<button id="sunideas-trial-submit" type="submit" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:12px 18px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;">התחלת ניסיון</button>' +
+          '<input id="sunideas-trial-email" name="email" type="email" required placeholder="האימייל שלכם" style="width:100%;box-sizing:border-box;padding:13px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14.5px;">' +
+          '<button id="sunideas-trial-submit" type="submit" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:13px;font-weight:700;font-size:14.5px;cursor:pointer;">התחלת ניסיון</button>' +
         '</form>';
 
-      body.appendChild(banner);
+      backdrop.appendChild(card);
+      body.appendChild(backdrop);
 
-      document.getElementById('sunideas-trial-close').addEventListener('click', function(){
-        banner.remove();
+      function closeModal(){
+        backdrop.remove();
         try{ sessionStorage.setItem('sunideas_trial_banner_closed', '1'); }catch(e){}
-      });
+      }
+      document.getElementById('sunideas-trial-close').addEventListener('click', closeModal);
+      backdrop.addEventListener('click', function(e){ if(e.target === backdrop) closeModal(); });
 
       document.getElementById('sunideas-trial-form').addEventListener('submit', function(e){
         var email = document.getElementById('sunideas-trial-email').value.trim();
@@ -246,9 +253,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
       var alreadyClosed = false;
       try{ alreadyClosed = sessionStorage.getItem('sunideas_trial_banner_closed') === '1'; }catch(e){}
-      if(alreadyClosed) banner.style.display = 'none';
+      if(alreadyClosed) backdrop.style.display = 'none';
     }catch(err){
-      console.error('Trial signup banner failed to render:', err);
+      console.error('Trial signup modal failed to render:', err);
     }
   }
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
