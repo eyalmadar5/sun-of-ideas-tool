@@ -203,44 +203,53 @@ document.addEventListener('DOMContentLoaded', async function() {
 <script>
 (function(){
   function init(){
-    var body = document.body;
-    if(!body || document.getElementById('sunideas-trial-banner')) return;
+    try{
+      var body = document.body;
+      if(!body || document.getElementById('sunideas-trial-banner')) return;
 
-    var banner = document.createElement('div');
-    banner.id = 'sunideas-trial-banner';
-    banner.style.cssText = 'max-width:480px;margin:32px auto;padding:24px;background:#fff;border:1.5px solid #E4DBC4;border-radius:20px;box-shadow:0 8px 24px rgba(36,38,31,0.1);font-family:Rubik,sans-serif;direction:rtl;text-align:center;';
+      var banner = document.createElement('div');
+      banner.id = 'sunideas-trial-banner';
+      banner.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;width:min(92vw,440px);padding:20px;background:#fff;border:1.5px solid #E4DBC4;border-radius:20px;box-shadow:0 10px 30px rgba(36,38,31,0.18);font-family:Rubik,sans-serif;direction:rtl;text-align:center;';
 
-    var urlParams = new URLSearchParams(window.location.search);
-    var trialError = urlParams.get('trial_error');
-    var errMsg = '';
-    if(trialError === 'signup_failed') errMsg = 'משהו השתבש ביצירת החשבון, נסו שוב.';
-    else if(trialError === 'invalid_email') errMsg = 'נא להזין אימייל תקין.';
+      var urlParams = new URLSearchParams(window.location.search);
+      var trialError = urlParams.get('trial_error');
+      var errMsg = '';
+      if(trialError === 'signup_failed') errMsg = 'משהו השתבש ביצירת החשבון, נסו שוב.';
+      else if(trialError === 'invalid_email') errMsg = 'נא להזין אימייל תקין.';
 
-    banner.innerHTML =
-      '<div style="font-size:17px;font-weight:700;color:#3A2A1A;margin-bottom:6px;">רוצים לנסות לפני שמחליטים?</div>' +
-      '<div style="font-size:13.5px;color:#8A7A66;margin-bottom:16px;">מפת רעיונות ראשונית, הרחבה נוספת אחת, ותסריט ריל אחד מלא - חינם, בלי כרטיס אשראי</div>' +
-      (errMsg ? '<div style="font-size:13px;color:#B3261E;margin-bottom:10px;">' + errMsg + '</div>' : '') +
-      '<form id="sunideas-trial-form" action="https://ideabooster.app/wp-admin/admin-post.php" method="POST" target="_top" style="display:flex;gap:8px;max-width:360px;margin:0 auto;">' +
-        '<input type="hidden" name="action" value="sunideas_start_trial">' +
-        '<input id="sunideas-trial-email" name="email" type="email" required placeholder="האימייל שלכם" style="flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14px;">' +
-        '<button id="sunideas-trial-submit" type="submit" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:12px 20px;font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;">התחלת ניסיון</button>' +
-      '</form>';
+      banner.innerHTML =
+        '<button id="sunideas-trial-close" type="button" aria-label="סגירה" style="position:absolute;top:10px;left:12px;background:none;border:none;font-size:16px;color:#B5A48E;cursor:pointer;">\u2715</button>' +
+        '<div style="font-size:16px;font-weight:700;color:#3A2A1A;margin-bottom:6px;">רוצים לנסות לפני שמחליטים?</div>' +
+        '<div style="font-size:13px;color:#8A7A66;margin-bottom:14px;">מפת רעיונות ראשונית, הרחבה נוספת אחת, ותסריט ריל אחד מלא - חינם, בלי כרטיס אשראי</div>' +
+        (errMsg ? '<div style="font-size:13px;color:#B3261E;margin-bottom:10px;">' + errMsg + '</div>' : '') +
+        '<form id="sunideas-trial-form" action="https://ideabooster.app/wp-admin/admin-post.php" method="POST" target="_top" style="display:flex;gap:8px;">' +
+          '<input type="hidden" name="action" value="sunideas_start_trial">' +
+          '<input id="sunideas-trial-email" name="email" type="email" required placeholder="האימייל שלכם" style="flex:1;min-width:0;padding:12px 14px;border-radius:12px;border:1.5px solid #E4DBC4;font-family:Rubik,sans-serif;font-size:14px;">' +
+          '<button id="sunideas-trial-submit" type="submit" style="background:#1E6E4C;color:#fff;border:none;border-radius:12px;padding:12px 18px;font-weight:700;font-size:13.5px;cursor:pointer;white-space:nowrap;">התחלת ניסיון</button>' +
+        '</form>';
 
-    var anchor = document.querySelector('h1, [class*="pricing"], body > div');
-    (anchor && anchor.parentElement ? anchor.parentElement : body).insertBefore(banner, anchor ? anchor.nextSibling : body.firstChild);
+      body.appendChild(banner);
 
-    // הטופס שולח כניווט עליון אמיתי (target="_top") ישירות ל-admin-post.php של
-    // וורדפרס - בדיוק כמו טופס ההתחברות הרגיל. זה קריטי: קריאת fetch חוצת-מקור
-    // מתוך ה-iframe לא תמיד קובעת עוגיית התחברות בגלל הגבלות SameSite/עוגיות
-    // צד-שלישי בדפדפנים מודרניים - ניווט טופס רגיל לא מושפע מזה בכלל.
-    document.getElementById('sunideas-trial-form').addEventListener('submit', function(e){
-      var email = document.getElementById('sunideas-trial-email').value.trim();
-      if(!email || email.indexOf('@') === -1){
-        e.preventDefault();
-        return;
-      }
-      document.getElementById('sunideas-trial-submit').textContent = 'רגע...';
-    });
+      document.getElementById('sunideas-trial-close').addEventListener('click', function(){
+        banner.remove();
+        try{ sessionStorage.setItem('sunideas_trial_banner_closed', '1'); }catch(e){}
+      });
+
+      document.getElementById('sunideas-trial-form').addEventListener('submit', function(e){
+        var email = document.getElementById('sunideas-trial-email').value.trim();
+        if(!email || email.indexOf('@') === -1){
+          e.preventDefault();
+          return;
+        }
+        document.getElementById('sunideas-trial-submit').textContent = 'רגע...';
+      });
+
+      var alreadyClosed = false;
+      try{ alreadyClosed = sessionStorage.getItem('sunideas_trial_banner_closed') === '1'; }catch(e){}
+      if(alreadyClosed) banner.style.display = 'none';
+    }catch(err){
+      console.error('Trial signup banner failed to render:', err);
+    }
   }
   if(document.readyState === 'complete' || document.readyState === 'interactive'){
     setTimeout(init, 400);
