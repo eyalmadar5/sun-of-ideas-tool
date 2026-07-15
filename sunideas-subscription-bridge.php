@@ -772,24 +772,19 @@ function sunideas_verify_history_token($user_id, $exp, $token) {
     return hash_equals($expected, (string) $token);
 }
 
-function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false){
+function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false, $pixel_event = null){
     $qs = $_SERVER['QUERY_STRING'] ?? '';
     if(!empty($qs)){
         $iframe_url .= (strpos($iframe_url, '?') === false ? '?' : '&') . $qs;
     }
+    if ($is_tool_page && !$pixel_event) $pixel_event = 'PageView';
     ?><!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Idea Booster - שמש הרעיונות</title>
-<?php if ($is_tool_page): ?>
-<link rel="manifest" href="https://eyalmadar5.github.io/sun-of-ideas-tool/manifest.json">
-<link rel="apple-touch-icon" href="https://eyalmadar5.github.io/sun-of-ideas-tool/apple-touch-icon.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Idea Booster">
-<meta name="theme-color" content="#C9622A">
+<?php if ($pixel_event): ?>
 <script>
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -800,11 +795,19 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '1026770009939982');
-fbq('track', 'PageView');
+fbq('track', '<?php echo esc_js($pixel_event); ?>');
 </script>
 <noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=1026770009939982&ev=PageView&noscript=1"
+src="https://www.facebook.com/tr?id=1026770009939982&ev=<?php echo esc_attr($pixel_event); ?>&noscript=1"
 /></noscript>
+<?php endif; ?>
+<?php if ($is_tool_page): ?>
+<link rel="manifest" href="https://eyalmadar5.github.io/sun-of-ideas-tool/manifest.json">
+<link rel="apple-touch-icon" href="https://eyalmadar5.github.io/sun-of-ideas-tool/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Idea Booster">
+<meta name="theme-color" content="#C9622A">
 <?php endif; ?>
 <style>
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:#F6F1E4; }
@@ -930,19 +933,19 @@ add_action('template_redirect', function () {
     $public_pages = [
         ['path' => get_option('sunideas_home_page_url', '/'),
          'url'  => get_option('sunideas_home_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site.html'),
-         'lang' => 'he'],
+         'lang' => 'he', 'pixel_event' => 'PageView'],
         ['path' => '/en/',
          'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site-en.html',
-         'lang' => 'en'],
+         'lang' => 'en', 'pixel_event' => 'PageView'],
         ['path' => get_option('sunideas_signup_page_url', '/הרשמה/'),
          'url'  => get_option('sunideas_signup_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html'),
-         'lang' => null],
+         'lang' => null, 'pixel_event' => null],
         ['path' => get_option('sunideas_login_page_url', '/התחברות/'),
          'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html'),
-         'lang' => null],
+         'lang' => null, 'pixel_event' => null],
         ['path' => '/תודה/',
          'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-thank-you.html',
-         'lang' => null],
+         'lang' => null, 'pixel_event' => 'Purchase'],
     ];
     foreach ($public_pages as $p) {
         if (empty($p['url'])) continue;
@@ -956,7 +959,7 @@ add_action('template_redirect', function () {
             if ($p['lang'] && !headers_sent()) {
                 setcookie('sunideas_lang', $p['lang'], time() + 60 * 60 * 24 * 90, '/');
             }
-            sunideas_render_fullbleed_page($p['url']);
+            sunideas_render_fullbleed_page($p['url'], false, $p['pixel_event'] ?? null);
         }
     }
 
