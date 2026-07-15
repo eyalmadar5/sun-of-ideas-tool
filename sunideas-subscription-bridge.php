@@ -474,13 +474,13 @@ function sunideas_start_trial_core($email) {
     if (empty($email) || !is_email($email)) {
         return ['ok' => false, 'error' => 'invalid_email'];
     }
+    $thank_you_url = home_url('/תודה/');
 
     $existing = get_user_by('email', $email);
     if ($existing) {
         wp_set_current_user($existing->ID);
         wp_set_auth_cookie($existing->ID, true);
-        $tool_url = home_url(get_option('sunideas_tool_page_url', '/הכלי/'));
-        return ['ok' => true, 'redirect' => $tool_url, 'existing' => true];
+        return ['ok' => true, 'redirect' => $thank_you_url, 'existing' => true];
     }
 
     $username = sanitize_user(current(explode('@', $email)) . '_' . wp_rand(1000, 9999));
@@ -510,7 +510,7 @@ function sunideas_start_trial_core($email) {
 
     wp_set_current_user($user_id);
     wp_set_auth_cookie($user_id, true);
-    return ['ok' => true, 'redirect' => $tool_url, 'existing' => false];
+    return ['ok' => true, 'redirect' => $thank_you_url, 'existing' => false];
 }
 
 function sunideas_handle_start_trial(WP_REST_Request $request) {
