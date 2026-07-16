@@ -96,6 +96,7 @@ add_action('admin_init', function () {
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_login_iframe_url');
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_history_secret');
     register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_google_client_id');
+    register_setting(SUNIDEAS_OPTION_GROUP, 'sunideas_owner_notify_email');
 });
 
 function sunideas_render_settings_page() {
@@ -135,6 +136,14 @@ function sunideas_render_settings_page() {
                                value="<?php echo esc_attr(get_option('sunideas_google_client_id', '')); ?>" class="regular-text"
                                placeholder="123456789-abc...apps.googleusercontent.com">
                         <p class="description">מתקבל מ-Google Cloud Console (Credentials → OAuth 2.0 Client IDs). התחברות עם Google תעבוד רק עבור אימיילים שכבר יש להם חשבון קיים באתר (כלומר כבר שילמו/נרשמו) - לא יוצר חשבונות חדשים.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="sunideas_owner_notify_email">מייל להתראות על הרשמות/תשלומים</label></th>
+                    <td>
+                        <input type="text" id="sunideas_owner_notify_email" name="sunideas_owner_notify_email"
+                               value="<?php echo esc_attr(get_option('sunideas_owner_notify_email', 'eyalmad@gmail.com')); ?>" class="regular-text">
+                        <p class="description">לכתובת הזו יישלח מייל אוטומטי בכל פעם שמישהו מתחיל ניסיון חינם או משלים תשלום - כדי שתדעו מיד, בלי לבדוק ידנית.</p>
                     </td>
                 </tr>
                 <tr>
@@ -508,6 +517,11 @@ function sunideas_start_trial_core($email) {
     wp_mail($email, $subject, $message);
     sunideas_log_event('ניסיון חינם נוצר', $email, 'הצלחה');
 
+    $owner_email = get_option('sunideas_owner_notify_email', 'eyalmad@gmail.com');
+    if (!empty($owner_email)) {
+        wp_mail($owner_email, '🎁 ניסיון חינם חדש! ' . $email, "אימייל: {$email}\nשם משתמש: {$username}");
+    }
+
     wp_set_current_user($user_id);
     wp_set_auth_cookie($user_id, true);
     return ['ok' => true, 'redirect' => $thank_you_url, 'existing' => false];
@@ -733,6 +747,17 @@ function sunideas_activate_subscriber($email, $full_name, $sum = 0) {
     update_user_meta($user->ID, 'sunideas_subscription_expiry', $new_expiry);
     update_user_meta($user->ID, 'sunideas_last_payment', current_time('mysql'));
 
+    // התראה מיידית לבעל האתר על תשלום חדש - כדי שלא יצטרך לבדוק ידנית
+    $owner_email = get_option('sunideas_owner_notify_email', 'eyalmad@gmail.com');
+    if (!empty($owner_email)) {
+        $notify_subject = ($is_new ? '💰 מנוי חדש שילם! ' : '🔁 חידוש תשלום! ') . $email;
+        $notify_body = "אימייל: {$email}\n"
+            . "שם: " . ($full_name ?: '-') . "\n"
+            . "סכום: ₪{$sum}\n"
+            . "תוקף חדש עד: " . date_i18n('d/m/Y', $new_expiry) . "\n"
+            . ($is_new ? "משתמש חדש\n" : "מנוי קיים - חידוש\n");
+        wp_mail($owner_email, $notify_subject, $notify_body);
+    }
 
     return $is_new;
 }
