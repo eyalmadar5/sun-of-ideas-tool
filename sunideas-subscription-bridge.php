@@ -275,14 +275,29 @@ function sunideas_render_subscribers() {
         echo '<p>עדיין אין משתמשים עם היסטוריית תשלום.</p>';
         return;
     }
-    echo '<table class="widefat"><thead><tr><th>אימייל</th><th>סטטוס</th><th>תוקף עד</th></tr></thead><tbody>';
+    echo '<table class="widefat"><thead><tr><th>אימייל</th><th>סטטוס</th><th>תוקף עד</th><th>ניצול ניסיון</th></tr></thead><tbody>';
     foreach ($users as $u) {
         $active = get_user_meta($u->ID, 'sunideas_subscription_active', true);
         $expiry = (int) get_user_meta($u->ID, 'sunideas_subscription_expiry', true);
+        $is_trial = get_user_meta($u->ID, 'sunideas_is_trial', true) === '1';
         $expired = $expiry > 0 && $expiry < time();
-        $status = ($active === '1' && !$expired) ? '✅ פעיל' : ($expired ? '⏳ פג תוקף' : '❌ לא פעיל');
+        if ($active === '1' && !$expired) {
+            $status = '✅ מנוי פעיל';
+        } elseif ($expired) {
+            $status = '⏳ מנוי פג תוקף';
+        } elseif ($is_trial) {
+            $status = '🎁 בניסיון חינם (לא שילם/ה)';
+        } else {
+            $status = '❌ לא פעיל';
+        }
         $expiry_str = $expiry > 0 ? date_i18n('d/m/Y', $expiry) : '-';
-        echo '<tr><td>' . esc_html($u->user_email) . '</td><td>' . esc_html($status) . '</td><td>' . esc_html($expiry_str) . '</td></tr>';
+        $trial_usage = '-';
+        if ($is_trial) {
+            $exp_used = (int) get_user_meta($u->ID, 'sunideas_trial_expansions_used', true);
+            $scr_used = (int) get_user_meta($u->ID, 'sunideas_trial_scripts_used', true);
+            $trial_usage = "הרחבות: {$exp_used}/1 · תסריטים: {$scr_used}/1";
+        }
+        echo '<tr><td>' . esc_html($u->user_email) . '</td><td>' . esc_html($status) . '</td><td>' . esc_html($expiry_str) . '</td><td>' . esc_html($trial_usage) . '</td></tr>';
     }
     echo '</tbody></table>';
 }
