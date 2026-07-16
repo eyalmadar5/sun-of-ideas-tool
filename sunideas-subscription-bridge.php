@@ -784,6 +784,13 @@ function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false, $pix
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Idea Booster - שמש הרעיונות</title>
+<script type="text/javascript">
+    (function(c,l,a,r,i,t,y){
+        c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+        t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+        y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window, document, "clarity", "script", "xkth00lm81");
+</script>
 <?php if ($pixel_event): ?>
 <script>
 !function(f,b,e,v,n,t,s)
