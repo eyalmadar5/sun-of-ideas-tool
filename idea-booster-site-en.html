@@ -258,54 +258,46 @@ document.addEventListener('DOMContentLoaded', async function() {
 </script>
 <script>
 (function(){
-  var apiTag = document.createElement('script');
-  apiTag.src = "https://www.youtube.com/iframe_api";
-  document.head.appendChild(apiTag);
-
-  var ytPlayer = null;
+  function getBaseSrc(){
+    var iframe = document.getElementById('heroVideoIframe');
+    if (!iframe) return null;
+    return iframe.src;
+  }
 
   function attachButtonHandler(){
     var btn = document.getElementById('soundToggleBtn');
     var icon = document.getElementById('soundToggleIcon');
-    if (!btn || btn.dataset.boundSoundHandler) return;
+    var iframe = document.getElementById('heroVideoIframe');
+    if (!btn || !iframe || btn.dataset.boundSoundHandler) return;
     btn.dataset.boundSoundHandler = '1';
+
+    var isMuted = true;
+
     btn.addEventListener('click', function(e){
       e.preventDefault();
       e.stopPropagation();
-      if (!ytPlayer || typeof ytPlayer.isMuted !== 'function') return;
-      try{
-        if (ytPlayer.isMuted()) {
-          ytPlayer.unMute();
-          ytPlayer.setVolume(100);
-          if (icon) icon.textContent = '\u{1F50A}';
-        } else {
-          ytPlayer.mute();
-          if (icon) icon.textContent = '\u{1F507}';
-        }
-      }catch(err){
-        console.error('Sound toggle failed:', err);
+      // במקום לשלוח פקודת "בטל השתקה" לנגן קיים (שבמכשירים/דפדפנים מסוימים
+      // גרמה לעצירה בלתי צפויה בלחיצה הראשונה) - פשוט טוענים מחדש את אותו
+      // סרטון עם מצב השתקה הפוך, ישירות כתוצאה סינכרונית מהקליק עצמו. זו
+      // פעולה חד-משמעית שדפדפנים תמיד מכבדים כמחוות משתמש אמיתית.
+      var src = iframe.src;
+      if (isMuted) {
+        iframe.src = src.replace('mute=1', 'mute=0');
+        isMuted = false;
+        if (icon) icon.textContent = '\u{1F50A}';
+      } else {
+        iframe.src = src.replace('mute=0', 'mute=1');
+        isMuted = true;
+        if (icon) icon.textContent = '\u{1F507}';
       }
     });
   }
 
-  // הפונקציה הזו נקראת אוטומטית ע"י ה-API של יוטיוב ברגע שהוא נטען ומוכן
-  window.onYouTubeIframeAPIReady = function(){
-    var iframeEl = document.getElementById('heroVideoIframe');
-    if (!iframeEl) return;
-    ytPlayer = new YT.Player('heroVideoIframe', {
-      events: {
-        'onReady': function(){
-          // רק אחרי שהנגן *באמת* מוכן מחברים את הכפתור - כך שאין שום מרוץ
-          // תזמון בין לחיצה ראשונה של המשתמש לבין מוכנות הנגן בפועל.
-          attachButtonHandler();
-        }
-      }
-    });
-  };
-
-  // רשת ביטחון: אם ה-onReady של הנגן לא הגיע תוך זמן סביר מסיבה כלשהי,
-  // עדיין מחברים את הכפתור אחרי כמה שניות כדי שלא יישאר מת לצמיתות.
-  setTimeout(attachButtonHandler, 4000);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setTimeout(attachButtonHandler, 300);
+  } else {
+    window.addEventListener('DOMContentLoaded', function(){ setTimeout(attachButtonHandler, 300); });
+  }
 })();
 </script>
 </body>
