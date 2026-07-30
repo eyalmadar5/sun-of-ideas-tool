@@ -887,7 +887,25 @@ src="https://www.facebook.com/tr?id=1026770009939982&ev=<?php echo esc_attr($pix
 </style>
 </head>
 <body>
-  <iframe src="<?php echo esc_url($iframe_url); ?>" allow="clipboard-write; camera; microphone; autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <iframe id="sunideasMainFrame" src="<?php echo esc_url($iframe_url); ?>" allow="clipboard-write; camera; microphone; autoplay; encrypted-media; accelerometer; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <script>
+    // אם הכתובת מגיעה עם hash (למשל #pricing), הוא לא עוזר על גבי ה"קליפה"
+    // הריקה הזו של וורדפרס - הוא צריך להיות מועבר לתוך ה-iframe עצמו, כי שם
+    // באמת נמצא האלמנט עם ה-id המתאים לגלול אליו.
+    (function(){
+      try {
+        if (window.location.hash) {
+          var frame = document.getElementById('sunideasMainFrame');
+          if (frame) {
+            var src = frame.getAttribute('src');
+            if (src && src.indexOf('#') === -1) {
+              frame.setAttribute('src', src + window.location.hash);
+            }
+          }
+        }
+      } catch (e) { console.error('Hash forwarding failed:', e); }
+    })();
+  </script>
   <?php if ($is_tool_page): $banner_lang = (isset($_COOKIE['sunideas_lang']) && $_COOKIE['sunideas_lang'] === 'en') ? 'en' : 'he'; ?>
   <div id="sunideas-install-banner" dir="<?php echo $banner_lang === 'en' ? 'ltr' : 'rtl'; ?>">
     <img src="https://eyalmadar5.github.io/sun-of-ideas-tool/icon-192.png" alt="Idea Booster">
