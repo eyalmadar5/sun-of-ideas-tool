@@ -1002,13 +1002,16 @@ add_action('template_redirect', function () {
         ['path' => '/en/',
          'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-site-en.html',
          'lang' => 'en', 'pixel_event' => 'PageView'],
-        ['path' => get_option('sunideas_signup_page_url', '/הרשמה/'),
-         'url'  => get_option('sunideas_signup_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html'),
-         'lang' => null, 'pixel_event' => null],
         ['path' => get_option('sunideas_login_page_url', '/התחברות/'),
          'url'  => get_option('sunideas_login_iframe_url', 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-login.html'),
          'lang' => null, 'pixel_event' => null],
-        ['path' => '/תודה/',
+        // הגרסאות הקודמות (מבוססות-iframe) של הרשמה ותודה - הועברו לכתובות
+        // גיבוי כדי לפנות את /הרשמה/ ו-/תודה/ לעמודי וורדפרס/אלמנטור טבעיים,
+        // תוך שמירה על נגישות לגרסה הישנה אם צריך לחזור אליה.
+        ['path' => '/הרשמה-קודם/',
+         'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-signup.html',
+         'lang' => null, 'pixel_event' => null],
+        ['path' => '/תודה-קודם/',
          'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-thank-you.html',
          'lang' => null, 'pixel_event' => 'Purchase'],
     ];
