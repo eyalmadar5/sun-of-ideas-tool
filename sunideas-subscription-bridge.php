@@ -818,6 +818,9 @@ function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false, $pix
         $iframe_url .= (strpos($iframe_url, '?') === false ? '?' : '&') . $qs;
     }
     if ($is_tool_page && !$pixel_event) $pixel_event = 'PageView';
+    // מאפשרים גם מערך של כמה אירועים (למשל Purchase + CompleteRegistration
+    // יחד בדף התודה) וגם מחרוזת בודדת כמו קודם, לשמירה על תאימות.
+    $pixel_events = $pixel_event ? (is_array($pixel_event) ? $pixel_event : [$pixel_event]) : [];
     ?><!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -831,7 +834,7 @@ function sunideas_render_fullbleed_page($iframe_url, $is_tool_page = false, $pix
         y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
     })(window, document, "clarity", "script", "xkth00lm81");
 </script>
-<?php if ($pixel_event): ?>
+<?php if (!empty($pixel_events)): ?>
 <script>
 !function(f,b,e,v,n,t,s)
 {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -842,11 +845,15 @@ t.src=v;s=b.getElementsByTagName(e)[0];
 s.parentNode.insertBefore(t,s)}(window, document,'script',
 'https://connect.facebook.net/en_US/fbevents.js');
 fbq('init', '1026770009939982');
-fbq('track', '<?php echo esc_js($pixel_event); ?>');
+<?php foreach ($pixel_events as $evt): ?>
+fbq('track', '<?php echo esc_js($evt); ?>');
+<?php endforeach; ?>
 </script>
+<?php foreach ($pixel_events as $evt): ?>
 <noscript><img height="1" width="1" style="display:none"
-src="https://www.facebook.com/tr?id=1026770009939982&ev=<?php echo esc_attr($pixel_event); ?>&noscript=1"
+src="https://www.facebook.com/tr?id=1026770009939982&ev=<?php echo esc_attr($evt); ?>&noscript=1"
 /></noscript>
+<?php endforeach; ?>
 <?php endif; ?>
 <?php if ($is_tool_page): ?>
 <link rel="manifest" href="https://eyalmadar5.github.io/sun-of-ideas-tool/manifest.json">
@@ -1013,7 +1020,7 @@ add_action('template_redirect', function () {
          'lang' => null, 'pixel_event' => null],
         ['path' => '/תודה-קודם/',
          'url'  => 'https://eyalmadar5.github.io/sun-of-ideas-tool/idea-booster-thank-you.html',
-         'lang' => null, 'pixel_event' => 'Purchase'],
+         'lang' => null, 'pixel_event' => ['Purchase', 'CompleteRegistration']],
     ];
     foreach ($public_pages as $p) {
         if (empty($p['url'])) continue;
